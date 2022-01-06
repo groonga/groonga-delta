@@ -1,0 +1,5 @@
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"},
+{"_key": "item2", "name": "Hat"}
+]

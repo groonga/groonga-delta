@@ -1,0 +1,26 @@
+mysql:
+  host: "127.0.0.1"
+  port: 5502
+  user: "replicator"
+  password: "replicator-password"
+  replication_client:
+    user: "c-replicator"
+    password: "client-replicator-password"
+  select:
+    user: "selector"
+    password: "selector-password"
+mapping:
+  items:
+    sources:
+      - database: "importer"
+        table: "shoes"
+        columns:
+          _key: "shoes-%{id}"
+          id: "%{id}"
+          source: "shoes"
+      - database: "importer"
+        table: "b"
+        columns:
+          _key: "b-%{id}"
+          id: "%{id}"
+          source: "b"

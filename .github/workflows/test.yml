@@ -1,0 +1,37 @@
+name: Test
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  test:
+    name: "Ruby ${{ matrix.ruby-version }}: ${{ matrix.runs-on }}"
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version:
+          - "2.6"
+          - "2.7"
+          - "3.0"
+          - "3.1"
+        mysql-source-backend:
+          - mysqlbinlog
+          # - mysql2-replication
+        runs-on:
+          # - macos-latest
+          - ubuntu-latest
+          # - windows-latest
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+      - name: Test
+        env:
+          GROONGA_DELTA_IMPORT_MYSQL_SOURCE_BACKEND: ${{ matrix.mysql-source-backend }}
+        run: |
+          bundle exec ruby test/run.rb

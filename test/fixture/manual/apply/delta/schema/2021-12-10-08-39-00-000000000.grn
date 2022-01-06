@@ -1,0 +1,3 @@
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32

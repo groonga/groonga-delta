@@ -1,0 +1,5 @@
+[mysqld]
+server-id=20
+log-bin=replica-bin
+log-slave-updates=on
+binlog-format=ROW

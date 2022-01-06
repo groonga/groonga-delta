@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+  ruby-3.0:
+    image: ghcr.io/groonga/groonga-delta:latest
+    build:
+      context: .
+      dockerfile: dockerfiles/ruby-3.0.dockerfile
+    volumes:
+      - .:/host:delegated
+    command:
+      - bash

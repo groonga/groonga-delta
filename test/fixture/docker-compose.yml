@@ -1,0 +1,45 @@
+version: "3.7"
+services:
+  mysql-5.5-source:
+    image: mysql:5.5
+    volumes:
+      - "./docker/mysql-5.5/source/conf.d:/etc/mysql/conf.d:ro"
+      - "./docker/mysql-5.5/source/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "127.0.0.1:5501:3306"
+
+  mysql-5.5-replica:
+    image: mysql:5.5
+    volumes:
+      - "./docker/mysql-5.5/replica/conf.d:/etc/mysql/conf.d:ro"
+      - "./docker/mysql-5.5/replica/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "127.0.0.1:5502:3306"
+    depends_on:
+      - mysql-5.5-source
+
+  mysql-5.5-nested-replica:
+    image: mysql:5.5
+    volumes:
+      - "./docker/mysql-5.5/nested-replica/conf.d:/etc/mysql/conf.d:ro"
+      - "./docker/mysql-5.5/nested-replica/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "127.0.0.1:5503:3306"
+    depends_on:
+      - mysql-5.5-replica
+
+  mysql-5.7-source:
+    image: mysql:5.7
+    volumes:
+      - "./docker/mysql-5.7/source/conf.d:/etc/mysql/conf.d:ro"
+      - "./docker/mysql-5.7/source/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "127.0.0.1:5701:3306"

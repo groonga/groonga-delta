@@ -1,0 +1,3 @@
+delta_dir: delta
+groonga:
+  url: "http://127.0.0.1:10041"
