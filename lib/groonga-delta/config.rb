@@ -55,7 +55,7 @@ module GroongaDelta
 
     def log_path
       resolve_path(File.join(@data["log_dir"] || "log",
-                             "#{name}.log"))
+                             "#{@name}.log"))
     end
 
     def log_age
