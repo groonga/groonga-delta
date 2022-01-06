@@ -49,5 +49,5 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency("groonga-client")
   spec.add_runtime_dependency("groonga-command-parser")
-  spec.add_runtime_dependency("parquet")
+  spec.add_runtime_dependency("red-parquet")
 end

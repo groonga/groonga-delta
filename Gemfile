@@ -22,6 +22,5 @@ gemspec
 gem "bundler"
 gem "mysql2-replication"
 gem "mysql_binlog"
-gem "red-parquet"
 gem "rake"
 gem "test-unit"
