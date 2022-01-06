@@ -17,7 +17,8 @@ jobs:
           - "3.0"
           - "3.1"
         mysql-source-backend:
-          - mysqlbinlog
+          # TODO: Crashed on GitHub Actions
+          # - mysqlbinlog
           - mysql2-replication
         runs-on:
           # - macos-latest
