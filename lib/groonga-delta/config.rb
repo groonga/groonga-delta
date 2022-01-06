@@ -17,6 +17,13 @@ require "fileutils"
 require "logger"
 require "yaml"
 
+class Logger::LogDevice
+  private
+  def add_log_header(file)
+    # Disable adding log header
+  end
+end
+
 module GroongaDelta
   class Config
     module PathResolvable
