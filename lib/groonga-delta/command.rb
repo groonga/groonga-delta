@@ -35,18 +35,7 @@ module GroongaDelta
           end
           true
         rescue => error
-          if @config
-            error.message.each_line(chomp: true).with_index do |line, i|
-              if i.zero?
-                @config.logger.error("#{error.class}: #{line}")
-              else
-                @config.logger.error(line)
-              end
-            end
-            error.backtrace.each do |trace|
-              @config.logger.error(trace)
-            end
-          end
+          @config.logger.error(error) if @config
           raise
         end
       end

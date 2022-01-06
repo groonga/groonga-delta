@@ -17,6 +17,8 @@ require "fileutils"
 require "logger"
 require "yaml"
 
+require_relative "log-formatter"
+
 class Logger::LogDevice
   private
   def add_log_header(file)
@@ -88,7 +90,7 @@ module GroongaDelta
       Logger.new(path,
                  log_age,
                  log_max_size,
-                 datetime_format: "%Y-%m-%dT%H:%M:%S.%N",
+                 formatter: LogFormatter.new,
                  level: log_level,
                  progname: @name)
     end
