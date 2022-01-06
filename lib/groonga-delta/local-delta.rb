@@ -26,7 +26,7 @@ module GroongaDelta
       @delta_dir = @config.delta_dir
     end
 
-    def sync
+    def apply
       start_time = read_current_status
       current_time = Time.now.utc
       targets = list_targets(@delta_dir, start_time, current_time)
