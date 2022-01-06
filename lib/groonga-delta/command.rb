@@ -20,18 +20,35 @@ module GroongaDelta
     def initialize
       @dir = "."
       @server = false
+      @config = nil
     end
 
     def run(args)
       catch do |tag|
         parse_args(args, tag)
-        prepare
-        loop do
-          process
-          break unless @server
-          sleep(config.polling_interval)
+        begin
+          prepare
+          loop do
+            process
+            break unless @server
+            sleep(config.polling_interval)
+          end
+          true
+        rescue => error
+          if @config
+            error.message.each_line(chomp: true).with_index do |line, i|
+              if i.zero?
+                @config.logger.error("#{error.class}: #{line}")
+              else
+                @config.logger.error(line)
+              end
+            end
+            error.backtrace.each do |trace|
+              @config.logger.error(trace)
+            end
+          end
+          raise
         end
-        true
       end
     end
 
@@ -57,7 +74,13 @@ module GroongaDelta
         puts(parser.help)
         throw(tag, true)
       end
-      parser.parse!(args.dup)
+      begin
+        parser.parse!(args.dup)
+      rescue OptionParser::InvalidOption => error
+        puts(error.message)
+        puts(parser.help)
+        throw(tag, false)
+      end
     end
   end
 end
