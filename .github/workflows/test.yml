@@ -28,11 +28,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install the latest mariadb-connector-c
         run: |
+          set -x
           sudo apt-get update
           dpkg -l | grep mysql
           dpkg -l | grep mariadb
           sudo apt-get purge -y -V \
-            libmysqlclient\*
+            libmysqlclient21
           sudo apt-get install -y -V \
             cmake \
             git \
