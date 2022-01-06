@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    name: "Ruby ${{ matrix.ruby-version }}: ${{ matrix.runs-on }}"
+    name: "Ruby ${{ matrix.ruby-version }}: ${{ matrix.mysql-source-backend }}"
     timeout-minutes: 10
     strategy:
       fail-fast: false
