@@ -54,6 +54,14 @@ jobs:
           ninja -C mariadb-connector-c.build
           sudo ninja -C mariadb-connector-c.build install
           rm -rf mariadb-connector-c*
+      - name: Install Groonga
+        run: |
+          sudo apt update
+          sudo apt -y -V install software-properties-common
+          sudo add-apt-repository -y ppa:groonga/ppa
+          sudo apt update
+          sudo apt -y -V install \
+            groonga
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby-version }}
