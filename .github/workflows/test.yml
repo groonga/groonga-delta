@@ -60,6 +60,19 @@ jobs:
           ninja -C mariadb-connector-c.build
           sudo ninja -C mariadb-connector-c.build install
           rm -rf mariadb-connector-c*
+      - name: Install Apache Arrow
+        run: |
+          sudo apt update
+          sudo apt -y -V install \
+            ca-certificates \
+            lsb-release \
+            wget
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt update
+          sudo apt -y -V install \
+            libgirepository1.0-dev \
+            libparquet-glib-dev
       - name: Install Groonga
         run: |
           sudo apt update
