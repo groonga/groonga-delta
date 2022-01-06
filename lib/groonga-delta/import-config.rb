@@ -38,6 +38,8 @@ module GroongaDelta
     end
 
     class MySQL
+      include Config::PathResolvable
+
       def initialize(data, secret_data)
         @data = data
         @secret_data = secret_data
@@ -114,7 +116,7 @@ module GroongaDelta
     end
 
     class Local
-      include PathResolvable
+      include Config::PathResolvable
 
       def initialize(dir, data)
         @dir = dir
