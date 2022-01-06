@@ -150,17 +150,26 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
   end
 
-  def add_upsert_data(table, load, packed: false)
+  def add_upsert_data(table, load_or_arrow_table, packed: false)
     timestamp = Time.now.utc
     timestamp_string = timestamp.strftime("%Y-%m-%d-%H-%M-%S-%N")
-    path = "#{timestamp_string}-upsert.grn"
+    path = "#{timestamp_string}-upsert"
+    if load_or_arrow_table.is_a?(Arrow::Table)
+      path << ".parquet"
+    else
+      path << ".grn"
+    end
     if packed
       path = "packed/#{timestamp_string}/#{path}"
     end
     path = "#{@delta_data_dir}/#{table}/#{path}"
     FileUtils.mkdir_p(File.dirname(path))
-    File.open(path, "w") do |input|
-      input.puts(load)
+    if load_or_arrow_table.is_a?(Arrow::Table)
+      load_or_arrow_table.save(path, format: :parquet)
+    else
+      File.open(path, "w") do |input|
+        input.puts(load_or_arrow_table)
+      end
     end
   end
 
@@ -306,6 +315,33 @@ load --table Items
 {"_key": "item2", "name": "Hat"}
 ]
       LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+    end
+  end
+
+  def test_upsert_parquet
+    run_groonga do |port|
+      generate_config(port)
+      add_schema(<<-SCHEMA)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      table = Arrow::Table.new("_key" => ["item1", "item2"],
+                               "name" => ["Shoes", "Hat"])
+      add_upsert_data("Items", table)
       assert_true(run_command)
       assert_equal(<<-DUMP, dump_db)
 table_create Items TABLE_HASH_KEY ShortText

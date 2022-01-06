@@ -251,8 +251,11 @@ module GroongaDelta
         else
           # TODO: Add support for @action == "delete"
           table = Arrow::Table.load(@path)
-          client.load(table: @name,
-                      values: table)
+          command = Groonga::Command::Load.new(table: @name,
+                                               values: table)
+          response = client.load(table: command[:table],
+                                 values: command[:values])
+          processor.process_response(response, command)
         end
       end
     end
@@ -277,7 +280,6 @@ module GroongaDelta
     end
 
     class CommandProcessor < Groonga::Client::CommandProcessor
-      private
       def process_response(response, command)
         # TODO
       end
