@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+require "arrow"
 require "mysql2"
 
 require_relative "writer"
@@ -318,18 +319,16 @@ module GroongaDelta
                                 symbolize_keys: true,
                                 cache_rows: false,
                                 stream: true)
-          groonga_table_name = source_table.groonga_table.name
-          @logger.info("Importing #{groonga_table_name} data " +
+          groonga_table = source_table.groonga_table
+          @logger.info("Importing #{groonga_table.name} data " +
                        "from #{full_table_name}")
-          groonga_records = Enumerator.new do |yielder|
-            result.each do |row|
-              groonga_record = source_table.groonga_table.generate_record(row)
-              yielder << groonga_record
-            end
+          enumerator = result.to_enum(:each)
+          enumerator.each_slice(1024 * 1024) do |rows|
+            groonga_record_batch = groonga_table.generate_record_batch(rows)
+            @writer.write_upserts(groonga_table.name,
+                                  groonga_record_batch.to_table)
           end
-          @writer.write_upserts(source_table.groonga_table.name,
-                                groonga_records)
-          @logger.info("Imported #{groonga_table_name} data " +
+          @logger.info("Imported #{groonga_table.name} data " +
                        "from #{full_table_name}")
         end
       end

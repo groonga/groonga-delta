@@ -155,8 +155,13 @@ class ImportCommandTest < Test::Unit::TestCase
 
   def read_table_files(table)
     data = ""
-    Dir.glob("#{@dir}/delta/data/#{table}/*.grn").sort.each do |file|
-      data << File.read(file)
+    Dir.glob("#{@dir}/delta/data/#{table}/*.{grn,parquet}").sort.each do |file|
+      case File.extname(file)
+      when ".grn"
+        data << File.read(file)
+      when ".parquet"
+        data << Arrow::Table.load(file).to_s
+      end
     end
     data
   end
@@ -168,22 +173,18 @@ class ImportCommandTest < Test::Unit::TestCase
       setup_initial_records(source_port)
       assert_true(run_command)
       assert_equal(<<-UPSERT, read_table_files("items"))
-load --table items
-[
-{"_key":"shoes-1","id":"1","name":"shoes <br> a","name_text":"shoes  a","source":"shoes"},
-{"_key":"shoes-2","id":"2","name":"shoes <br> b","name_text":"shoes  b","source":"shoes"},
-{"_key":"shoes-3","id":"3","name":"shoes <br> c","name_text":"shoes  c","source":"shoes"}
-]
+\t_key\tid\tname\tname_text\tsource
+0\tshoes-1\t1 \tshoes <br> a\tshoes  a \tshoes 
+1\tshoes-2\t2 \tshoes <br> b\tshoes  b \tshoes 
+2\tshoes-3\t3 \tshoes <br> c\tshoes  c \tshoes 
       UPSERT
       setup_changes(source_port)
       assert_true(run_command)
       assert_equal(<<-DELTA, read_table_files("items"))
-load --table items
-[
-{"_key":"shoes-1","id":"1","name":"shoes <br> a","name_text":"shoes  a","source":"shoes"},
-{"_key":"shoes-2","id":"2","name":"shoes <br> b","name_text":"shoes  b","source":"shoes"},
-{"_key":"shoes-3","id":"3","name":"shoes <br> c","name_text":"shoes  c","source":"shoes"}
-]
+\t_key\tid\tname\tname_text\tsource
+0\tshoes-1\t1 \tshoes <br> a\tshoes  a \tshoes 
+1\tshoes-2\t2 \tshoes <br> b\tshoes  b \tshoes 
+2\tshoes-3\t3 \tshoes <br> c\tshoes  c \tshoes 
 load --table items
 [
 {"_key":"shoes-10","id":"10","name":"shoes <br> A","name_text":"shoes  A","source":"shoes"},

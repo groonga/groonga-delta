@@ -17,6 +17,7 @@ require "fileutils"
 require "json"
 
 require "groonga/command"
+require "parquet"
 
 module GroongaDelta
   class Writer
@@ -25,28 +26,38 @@ module GroongaDelta
     end
 
     def write_upserts(table, records, packed: false)
-      write_data(table, "upsert", packed: packed) do |output|
-        first_record = true
-        records.each do |record|
-          if first_record
-            output.puts("load --table #{table}")
-            output.print("[")
-            first_record = false
-          else
-            output.print(",")
-          end
-          output.puts
-          output.print(record.to_json)
+      if records.is_a?(Arrow::Table)
+        write_data(table,
+                   "upsert",
+                   ".parquet",
+                   packed: packed,
+                   open_output: false) do |output|
+          records.save(output, format: :parquet)
         end
-        unless first_record
-          output.puts()
-          output.puts("]")
+      else
+        write_data(table, "upsert", ".grn", packed: packed) do |output|
+          first_record = true
+          records.each do |record|
+            if first_record
+              output.puts("load --table #{table}")
+              output.print("[")
+              first_record = false
+            else
+              output.print(",")
+            end
+            output.puts
+            output.print(record.to_json)
+          end
+          unless first_record
+            output.puts()
+            output.puts("]")
+          end
         end
       end
     end
 
     def write_deletes(table, keys)
-      write_data(table, "delete") do |output|
+      write_data(table, "delete", ".grn") do |output|
         delete = Groonga::Command::Delete.new
         delete[:table] = table
         keys.each do |key|
@@ -63,7 +74,7 @@ module GroongaDelta
     end
 
     private
-    def write_entry(prefix, suffix, packed: false)
+    def write_entry(prefix, suffix, packed: false, open_output: true)
       timestamp = Time.now.utc
       base_name = timestamp.strftime("%Y-%m-%d-%H-%M-%S-%N#{suffix}")
       if packed
@@ -77,8 +88,12 @@ module GroongaDelta
         path = "#{dir}/#{base_name}"
       end
       FileUtils.mkdir_p(File.dirname(temporary_path))
-      File.open(temporary_path, "w") do |output|
-        yield(output)
+      if open_output
+        File.open(temporary_path, "w") do |output|
+          yield(output)
+        end
+      else
+        yield(temporary_path)
       end
       if packed
         FileUtils.mv(File.dirname(temporary_path),
@@ -88,9 +103,17 @@ module GroongaDelta
       end
     end
 
-    def write_data(table, action, packed: false, &block)
-      # TODO: Add support for .parquet
-      write_entry("data/#{table}", "-#{action}.grn", packed: packed, &block)
+    def write_data(table,
+                   action,
+                   suffix,
+                   packed: false,
+                   open_output: true,
+                   &block)
+      write_entry("data/#{table}",
+                  "-#{action}#{suffix}",
+                  packed: packed,
+                  open_output: open_output,
+                  &block)
     end
   end
 end

@@ -24,6 +24,7 @@ require "stringio"
 require "tempfile"
 require "tmpdir"
 
+require "parquet"
 require "mysql2"
 
 require "test-unit"

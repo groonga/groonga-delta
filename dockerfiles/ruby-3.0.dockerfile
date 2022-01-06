@@ -7,9 +7,21 @@ RUN \
 RUN \
   apt-get update && \
   apt-get install -y -V \
+    ca-certificates \
+    lsb-release \
+    wget && \
+  wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
+  apt install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
+  rm apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb && \
+  apt-get update && \
+  apt-get install -y -V \
     cmake \
     git \
-    ninja-build
+    libgirepository1.0-dev \
+    libparquet-glib-dev \
+    ninja-build && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/*
 
 RUN \
   git config --global user.name "groonga" && \
@@ -35,7 +47,11 @@ RUN \
   ninja -C mariadb-connector-c.build install && \
   rm -rf mariadb-connector-c*
 
-RUN gem install mysql2-replication
+RUN \
+  gem install \
+    mysql2-replication \
+    mysql_binlog \
+    red-parquet
 
 COPY . groonga-delta
 WORKDIR groonga-delta

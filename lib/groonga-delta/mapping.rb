@@ -125,6 +125,23 @@ module GroongaDelta
         end
         record
       end
+
+      def generate_record_batch(source_records)
+        fields = @groonga_columns.collect do |groonga_column|
+          {
+            name: groonga_column.name,
+            type: groonga_column.arrow_type,
+          }
+        end
+        builder = Arrow::RecordBatchBuilder.new(fields)
+        groonga_records = Enumerator.new do |yielder|
+          source_records.each do |source_record|
+            yielder << generate_record(source_record)
+          end
+        end
+        builder.append_records(groonga_records)
+        builder.flush
+      end
     end
 
     class GroongaColumn
@@ -145,6 +162,17 @@ module GroongaDelta
         else
           evaluator = ExpressionEvaluator.new(source_record)
           evaluator.evaluate(@expression)
+        end
+      end
+
+      def arrow_type
+        case @type
+        when nil, "ShortText", "Text", "LongText"
+          :string
+        when "Time"
+          Arrow::TimestampDataType.new(:nano)
+        else
+          @type
         end
       end
 
