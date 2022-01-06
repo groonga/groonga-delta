@@ -32,8 +32,7 @@ jobs:
           dpkg -l | grep mysql
           dpkg -l | grep mariadb
           sudo apt-get purge -y -V \
-            \*mariadb\* \
-            \*mysql\*
+            libmysqlclient\*
           sudo apt-get install -y -V \
             cmake \
             git \
