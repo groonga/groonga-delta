@@ -30,10 +30,9 @@ jobs:
         run: |
           set -x
           sudo apt-get update
-          dpkg -l | grep mysql
-          dpkg -l | grep mariadb
+          dpkg -l | grep 'mysql\|mariadb' || :
           sudo apt-get purge -y -V \
-            libmysqlclient21
+            libmysqlclient\*
           sudo apt-get install -y -V \
             cmake \
             git \
