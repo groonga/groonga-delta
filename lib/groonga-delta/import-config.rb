@@ -28,7 +28,8 @@ module GroongaDelta
 
     def mysql
       return nil unless @data["mysql"]
-      MySQL.new(@data["mysql"],
+      MySQL.new(@dir,
+                @data["mysql"],
                 @secret_data["mysql"] || {})
     end
 
@@ -44,7 +45,8 @@ module GroongaDelta
     class MySQL
       include Config::PathResolvable
 
-      def initialize(data, secret_data)
+      def initialize(dir, data, secret_data)
+        @dir = dir
         @data = data
         @secret_data = secret_data
       end

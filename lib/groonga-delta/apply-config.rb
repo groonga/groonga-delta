@@ -22,15 +22,16 @@ module GroongaDelta
     end
 
     def groonga
-      Groonga.new(@data["groonga"] || {})
+      Groonga.new(@dir, @data["groonga"] || {})
     end
 
     def local
-      Local.new(@data["local"] || {})
+      Local.new(@dir, @data["local"] || {})
     end
 
     class Groonga
-      def initialize(data)
+      def initialize(dir, data)
+        @dir = dir
         @data = data
       end
 
@@ -50,7 +51,8 @@ module GroongaDelta
     class Local
       include Config::PathResolvable
 
-      def initialize(data)
+      def initialize(dir, data)
+        @dir = dir
         @data = data
       end
 

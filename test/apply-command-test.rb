@@ -16,9 +16,7 @@
 class ApplyCommandTest < Test::Unit::TestCase
   def run_command(*args)
     command_line = GroongaDelta::ApplyCommand.new
-    Dir.chdir(@dir) do
-      command_line.run(["--dir=#{@dir}", *args])
-    end
+    command_line.run(["--dir=#{@dir}", *args])
   end
 
   def setup
