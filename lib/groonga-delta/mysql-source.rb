@@ -328,8 +328,7 @@ module GroongaDelta
             end
           end
           @writer.write_upserts(source_table.groonga_table.name,
-                                groonga_records,
-                                packed: true)
+                                groonga_records)
           @logger.info("Imported #{groonga_table_name} data " +
                        "from #{full_table_name}")
         end

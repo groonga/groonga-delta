@@ -153,14 +153,6 @@ class ImportCommandTest < Test::Unit::TestCase
     client.query("UPDATE shoes SET name = 'shoes <br> X' WHERE id = 40");
   end
 
-  def read_packed_table_files(table)
-    data = ""
-    Dir.glob("#{@dir}/delta/data/#{table}/packed/*/*.grn").sort.each do |file|
-      data << File.read(file)
-    end
-    data
-  end
-
   def read_table_files(table)
     data = ""
     Dir.glob("#{@dir}/delta/data/#{table}/*.grn").sort.each do |file|
@@ -175,7 +167,7 @@ class ImportCommandTest < Test::Unit::TestCase
       generate_config(target_port, checksum)
       setup_initial_records(source_port)
       assert_true(run_command)
-      assert_equal(<<-UPSERT, read_packed_table_files("items"))
+      assert_equal(<<-UPSERT, read_table_files("items"))
 load --table items
 [
 {"_key":"shoes-1","id":"1","name":"shoes <br> a","name_text":"shoes  a","source":"shoes"},
@@ -186,6 +178,12 @@ load --table items
       setup_changes(source_port)
       assert_true(run_command)
       assert_equal(<<-DELTA, read_table_files("items"))
+load --table items
+[
+{"_key":"shoes-1","id":"1","name":"shoes <br> a","name_text":"shoes  a","source":"shoes"},
+{"_key":"shoes-2","id":"2","name":"shoes <br> b","name_text":"shoes  b","source":"shoes"},
+{"_key":"shoes-3","id":"3","name":"shoes <br> c","name_text":"shoes  c","source":"shoes"}
+]
 load --table items
 [
 {"_key":"shoes-10","id":"10","name":"shoes <br> A","name_text":"shoes  A","source":"shoes"},
