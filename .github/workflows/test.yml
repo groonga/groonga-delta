@@ -29,6 +29,11 @@ jobs:
       - name: Install the latest mariadb-connector-c
         run: |
           sudo apt-get update
+          dpkg -l | grep mysql
+          dpkg -l | grep mariadb
+          sudo apt-get purge -y -V \
+            \*mariadb\* \
+            \*mysql\*
           sudo apt-get install -y -V \
             cmake \
             git \
