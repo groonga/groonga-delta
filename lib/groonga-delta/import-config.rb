@@ -22,6 +22,10 @@ module GroongaDelta
       super("groonga-delta-import", dir)
     end
 
+    def delta_dir
+      resolve_path(@data["delta_dir"] || "delta")
+    end
+
     def mysql
       return nil unless @data["mysql"]
       MySQL.new(@data["mysql"],

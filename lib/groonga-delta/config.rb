@@ -54,10 +54,6 @@ module GroongaDelta
       end
     end
 
-    def delta_dir
-      resolve_path(@data["delta_dir"] || "delta")
-    end
-
     def logger
       @logger ||= create_logger
     end

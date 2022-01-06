@@ -23,7 +23,7 @@ module GroongaDelta
       @config = config
       @status = status
       @logger = @config.logger
-      @delta_dir = @config.delta_dir
+      @delta_dir = @config.local.delta_dir
     end
 
     def apply

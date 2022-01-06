@@ -25,6 +25,10 @@ module GroongaDelta
       Groonga.new(@data["groonga"] || {})
     end
 
+    def local
+      Local.new(@data["local"] || {})
+    end
+
     class Groonga
       def initialize(data)
         @data = data
@@ -40,6 +44,18 @@ module GroongaDelta
         else
           @data["read_timeout"]
         end
+      end
+    end
+
+    class Local
+      include Config::PathResolvable
+
+      def initialize(data)
+        @data = data
+      end
+
+      def delta_dir
+        resolve_path(@data["delta_dir"] || "delta")
       end
     end
   end
