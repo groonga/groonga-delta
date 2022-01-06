@@ -89,6 +89,7 @@ module GroongaDelta
     end
 
     def each_packed_target_path(dir, min_timestamp, max_timestamp)
+      return unless min_timestamp.to_i.zero?
       Dir.glob("#{dir}/packed/*") do |path|
         next unless File.directory?(path)
         timestamp, action, post_match = parse_timestamp(File.basename(path))

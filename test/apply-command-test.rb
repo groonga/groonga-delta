@@ -164,26 +164,15 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
   end
 
-  data(:packed, [true, false])
-  def test_initial(data)
-    packed = data[:packed]
+  def test_packed_on_initialization
     run_groonga do |port|
       generate_config(port)
-      add_schema(<<-SCHEMA, packed: packed)
+      add_schema(<<-SCHEMA, packed: true)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
       SCHEMA
-      assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
-table_create Items TABLE_HASH_KEY ShortText
-column_create Items name COLUMN_SCALAR ShortText
-column_create Items price COLUMN_SCALAR UInt32
-      DUMP
-      add_schema(<<-SCHEMA, packed: packed)
-column_remove Items price
-      SCHEMA
-      add_upsert_data("Items", <<-LOAD, packed: packed)
+      add_upsert_data("Items", <<-LOAD, packed: true)
 load --table Items
 [
 {"_key": "item1", "name": "Shoes"},
@@ -194,12 +183,140 @@ load --table Items
       assert_equal(<<-DUMP, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+    end
+  end
+
+  def test_packed_after_initialization
+    run_groonga do |port|
+      generate_config(port)
+      add_schema(<<-SCHEMA, packed: true)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      add_upsert_data("Items", <<-LOAD, packed: true)
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"},
+{"_key": "item2", "name": "Hat"}
+]
+      LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+
+      # Not used
+      add_schema(<<-SCHEMA, packed: true)
+column_remove Items price
+      SCHEMA
+      assert_true(run_command)
+      assert_equal(<<-DUMP, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+    end
+  end
+
+  def test_non_packed_after_initialization
+    run_groonga do |port|
+      generate_config(port)
+      add_schema(<<-SCHEMA, packed: true)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      add_upsert_data("Items", <<-LOAD, packed: true)
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"},
+{"_key": "item2", "name": "Hat"}
+]
+      LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+
+      add_schema(<<-SCHEMA)
+column_remove Items price
+      SCHEMA
+      assert_true(run_command)
+      assert_equal(<<-DUMP, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
 
 load --table Items
 [
 ["_key","name"],
 ["item1","Shoes"],
 ["item2","Hat"]
+]
+      DUMP
+    end
+  end
+
+  def test_non_packed_on_initialization
+    run_groonga do |port|
+      generate_config(port)
+      add_schema(<<-SCHEMA)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      add_upsert_data("Items", <<-LOAD)
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"},
+{"_key": "item2", "name": "Hat"}
+]
+      LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
 ]
       DUMP
     end
