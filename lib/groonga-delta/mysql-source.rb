@@ -133,7 +133,7 @@ module GroongaDelta
           replication_client.each do |event|
             case event
             when Mysql2Replication::RotateEvent
-              file = event.file_name unless event.next_position.zero?
+              file = event.file_name
             when Mysql2Replication::RowsEvent
               event_name = event.class.name.split("::").last
               normalized_type =
