@@ -17,7 +17,7 @@ require "fileutils"
 require "logger"
 require "yaml"
 
-require_relative "log-formatter"
+require_relative "ltsv-log-formatter"
 
 class Logger::LogDevice
   private
@@ -86,7 +86,7 @@ module GroongaDelta
       Logger.new(path,
                  log_age,
                  log_max_size,
-                 formatter: LogFormatter.new,
+                 formatter: LTSVLogFormatter.new,
                  level: log_level,
                  progname: @name)
     end

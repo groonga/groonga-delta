@@ -14,12 +14,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 module GroongaDelta
-  class LogFormatter
+  class LTSVLogFormatter
     def call(severity, time, program_name, message)
-      prefix = "%{time}\t%{severity}\t%{program_name}\t%{pid}" % {
-        severity: severity[0],
-        time: time.strftime("%Y-%m-%dT%H:%M:%S.%N"),
-        program_name: program_name,
+      prefix = "timestamp:%{timestamp}\tseverity:%{severity}\tpid:%{pid}" % {
+        severity: severity,
+        timestamp: time.strftime("%Y-%m-%dT%H:%M:%S.%N"),
         pid: Process.pid,
       }
       formatted = ""
@@ -33,14 +32,19 @@ module GroongaDelta
         message = message.inspect
       end
       message.each_line(chomp: true) do |line, i|
-        formatted << "#{prefix}\t#{line}\n"
+        formatted << "#{prefix}\tmessage:#{escape_value(line)}\n"
       end
       if backtrace
         backtrace.each do |trace|
-          formatted << "#{prefix}\t#{trace}\n"
+          formatted << "#{prefix}\tmessage:#{escape_value(trace)}\n"
         end
       end
       formatted
+    end
+
+    private
+    def escape_value(value)
+      value.gsub(/[\t\r\n]/, " ")
     end
   end
 end
