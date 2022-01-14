@@ -130,7 +130,7 @@ module GroongaDelta
         fields = @groonga_columns.collect do |groonga_column|
           {
             name: groonga_column.name,
-            type: groonga_column.arrow_type,
+            data_type: groonga_column.arrow_type,
           }
         end
         builder = Arrow::RecordBatchBuilder.new(fields)
