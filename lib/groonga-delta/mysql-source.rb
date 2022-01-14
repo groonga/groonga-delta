@@ -56,7 +56,7 @@ module GroongaDelta
       FileUtils.mkdir_p(@binlog_dir)
       local_file = File.join(@binlog_dir, file)
       unless File.exist?(local_file.succ)
-        command_line = ["mysqlbinlog"]
+        command_line = [@config.mysqlbinlog].flatten
         command_line << "--host=#{@config.host}" if @config.host
         command_line << "--port=#{@config.port}" if @config.port
         command_line << "--socket=#{@config.socket}" if @config.socket
@@ -71,7 +71,6 @@ module GroongaDelta
         command_line << "--result-file=#{@binlog_dir}/"
         command_line << file
         spawn_process(*command_line) do |pid, output_read, error_read|
-          wait_process(pid)
         end
       end
       reader = MysqlBinlog::BinlogFileReader.new(local_file)
@@ -192,7 +191,7 @@ module GroongaDelta
                      "position" => next_position)
     end
 
-    def wait_process(pid)
+    def wait_process(command_line, pid, output_read, error_read)
       begin
         _, status = Process.waitpid2(pid)
       rescue SystemCallError
@@ -233,7 +232,7 @@ module GroongaDelta
           end
           raise
         ensure
-          wait_process(pid)
+          wait_process(command_line, pid, output_read, error_read)
           output_read.close unless output_read.closed?
           error_read.close unless error_read.closed?
         end

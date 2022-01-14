@@ -30,10 +30,30 @@ class ImportCommandTest < Test::Unit::TestCase
     File.join(__dir__, "fixture", *components)
   end
 
-  def generate_config(port, checksum)
+  def generate_config(mysql_version, port, checksum)
+    case ENV["GROONGA_DELTA_IMPORT_MYSQL_SOURCE_BACKEND"]
+    when "mysqlbinlog"
+      host = UDPSocket.open do |socket|
+        socket.connect("128.0.0.1", 7)
+        Socket.unpack_sockaddr_in(socket.getsockname)[1]
+      end
+      mysqlbinlog = [
+        "docker-compose",
+        "--file", fixture_path("docker-compose.yml"),
+        "run",
+        "--rm",
+        "--volume", "#{@dir}:#{@dir}",
+        "--user", "#{Process.uid}",
+        "mysql-#{mysql_version}-mysqlbinlog",
+      ]
+    else
+      host = "127.0.0.1"
+      mysqlbinlog = nil
+    end
     data = {
       "mysql" => {
-        "host" => "127.0.0.1",
+        "mysqlbinlog" => mysqlbinlog,
+        "host" => host,
         "port" => port,
         "user" => "replicator",
         "password" => "replicator-password",
@@ -167,7 +187,7 @@ class ImportCommandTest < Test::Unit::TestCase
   data(:version, ["5.5", "5.7"])
   def test_mysql
     run_mysqld(data[:version]) do |target_port, source_port, checksum|
-      generate_config(target_port, checksum)
+      generate_config(data[:version], target_port, checksum)
       setup_initial_records(source_port)
       assert_true(run_command)
       assert_equal(<<-UPSERT, read_table_files("items"))

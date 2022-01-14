@@ -1,5 +1,10 @@
 version: "3.7"
 services:
+  mysql-5.5-mysqlbinlog:
+    image: mysql:5.5
+    entrypoint:
+      - mysqlbinlog
+
   mysql-5.5-source:
     image: mysql:5.5
     volumes:
@@ -8,7 +13,7 @@ services:
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "127.0.0.1:5501:3306"
+      - "0.0.0.0:5501:3306"
 
   mysql-5.5-replica:
     image: mysql:5.5
@@ -18,7 +23,7 @@ services:
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "127.0.0.1:5502:3306"
+      - "0.0.0.0:5502:3306"
     depends_on:
       - mysql-5.5-source
 
@@ -30,9 +35,14 @@ services:
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "127.0.0.1:5503:3306"
+      - "0.0.0.0:5503:3306"
     depends_on:
       - mysql-5.5-replica
+
+  mysql-5.7-mysqlbinlog:
+    image: mysql:5.7
+    entrypoint:
+      - mysqlbinlog
 
   mysql-5.7-source:
     image: mysql:5.7
@@ -42,4 +52,9 @@ services:
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "127.0.0.1:5701:3306"
+      - "0.0.0.0:5701:3306"
+
+  groonga:
+    image: groonga/groonga:11.1.0-debian
+    ports:
+      - "0.0.0.0:10041:10041"
