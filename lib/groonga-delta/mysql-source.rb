@@ -319,16 +319,19 @@ module GroongaDelta
                                 cache_rows: false,
                                 stream: true)
           groonga_table = source_table.groonga_table
-          @logger.info("Importing #{groonga_table.name} data " +
-                       "from #{full_table_name}")
+          target_message = "#{full_table_name} -> #{groonga_table.name}"
+          @logger.info("Start importing: #{target_message}")
           enumerator = result.to_enum(:each)
+          n_rows = 0
           enumerator.each_slice(1024 * 1024) do |rows|
+            n_rows += rows.size
             groonga_record_batch = groonga_table.generate_record_batch(rows)
             @writer.write_upserts(groonga_table.name,
                                   groonga_record_batch.to_table)
+            @logger.info("Importing: #{target_message}: " +
+                         "#{n_rows}(+#{rows.size})")
           end
-          @logger.info("Imported #{groonga_table.name} data " +
-                       "from #{full_table_name}")
+          @logger.info("Imported: #{target_message}: #{n_rows}")
         end
       end
     end
