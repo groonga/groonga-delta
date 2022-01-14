@@ -36,6 +36,7 @@ module GroongaDelta
     def build_source_databases
       raw_source_databases = {}
       @data.each do |groonga_table_name, details|
+        restriction = Restriction.new(details["restriction"])
         (details["sources"] || []).each do |source|
           raw_groonga_columns = source["columns"]
           groonga_columns = []
@@ -54,7 +55,8 @@ module GroongaDelta
             groonga_columns << GroongaColumn.new(name,
                                                  template,
                                                  expression,
-                                                 type)
+                                                 type,
+                                                 restriction)
             if template
               template.scan(/%{(.*?)}/).flatten.each do |source_column_name|
                 source_column_names << source_column_name.to_sym
@@ -84,6 +86,24 @@ module GroongaDelta
           @source_tables_index[[source_database.name, source_table.name]] =
             source_table
         end
+      end
+    end
+
+    class Restriction
+      attr_reader :time_max
+      attr_reader :time_min
+      def initialize(data)
+        @data = data
+        @time_max = time_value("time", "max")
+        @time_min = time_value("time", "min")
+      end
+
+      private
+      def time_value(*keys)
+        return nil if @data.nil?
+        value = @data.dig(*keys)
+        return value if value.nil?
+        Time.parse(value).localtime
       end
     end
 
@@ -149,26 +169,31 @@ module GroongaDelta
       attr_reader :template
       attr_reader :expression
       attr_reader :type
-      def initialize(name, template, expression, type)
+      attr_reader :restriction
+      def initialize(name, template, expression, type, restriction)
         @name = name
         @template = template
         @expression = expression
         @type = type
+        @restriction = restriction
       end
 
       def generate_value(source_record)
         if @template
-          cast(@template % source_record)
+          value = cast(@template % source_record)
         else
           evaluator = ExpressionEvaluator.new(source_record)
-          evaluator.evaluate(@expression)
+          value = evaluator.evaluate(@expression)
         end
+        normalize_value(value)
       end
 
       def arrow_type
         case @type
         when nil, "ShortText", "Text", "LongText"
           :string
+        when "Bool"
+          :boolean
         when "Time"
           Arrow::TimestampDataType.new(:nano)
         else
@@ -202,8 +227,7 @@ module GroongaDelta
             year = Integer(match[1], 10)
             month = Integer(match[2], 10)
             day = Integer(match[3], 10)
-            time = Time.new(year, month, day)
-            time.strftime("%Y-%m-%d %H:%M:%S.%9N")
+            Time.new(year, month, day)
           when /\A(\d{4})-(\d{2})-(\d{2})\ 
                   (\d{2}):(\d{2}):(\d{2})\ 
                   ([+-])(\d{2})(\d{2})\z/x
@@ -219,12 +243,34 @@ module GroongaDelta
             timezone_minute = match[9]
             timezone = "#{timezone_sign}#{timezone_hour}:#{timezone_minute}"
             time = Time.new(year, month, day, hour, minute, second, timezone)
-            time.utc.localtime.strftime("%Y-%m-%d %H:%M:%S.%9N")
+            time.utc.localtime
           else
             value
           end
         else
           raise "Unknown type: #{@type}: #{value.inspect}"
+        end
+      end
+
+      def normalize_value(value)
+        case type
+        when "Time"
+          time_max = @restriction.time_max
+          time_min = @restriction.time_min
+          if !value.is_a?(Time) and value.respond_to?(:to_time)
+            value = value.to_time
+          end
+          return value if time_max.nil? and time_min.nil?
+          return value unless value.is_a?(Time)
+          if time_max and value >= time_max
+            time_max
+          elsif time_min and value <= time_min
+            time_min
+          else
+            value
+          end
+        else
+          value
         end
       end
     end
