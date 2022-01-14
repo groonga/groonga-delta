@@ -123,6 +123,29 @@ module GroongaDelta
         return nil if _checksum.nil?
         _checksum.to_sym
       end
+
+      def initial_import_batch_size
+        resolve_size(@data["initial_import_batch_size"] || 1024 * 1024)
+      end
+
+      private
+      def resolve_size(value)
+        case value
+        when String
+          case value
+          when /\A(\d+)[kK]\z/
+            Integer($1, 10) * 1024
+          when /\A(\d+)[mM]\z/
+            Integer($1, 10) * 1024 * 1024
+          when /\A(\d+)[gG]\z/
+            Integer($1, 10) * 1024 * 1024 * 1024
+          else
+            raise ArgumentError, "invalid size value: #{value.inspect}"
+          end
+        else
+          value
+        end
+      end
     end
 
     class Local

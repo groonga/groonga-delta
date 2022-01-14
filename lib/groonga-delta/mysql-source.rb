@@ -323,11 +323,12 @@ module GroongaDelta
           @logger.info("Start importing: #{target_message}")
           enumerator = result.to_enum(:each)
           n_rows = 0
-          enumerator.each_slice(1024 * 1024) do |rows|
-            n_rows += rows.size
+          batch_size = @config.initial_import_batch_size
+          enumerator.each_slice(batch_size) do |rows|
             groonga_record_batch = groonga_table.generate_record_batch(rows)
             @writer.write_upserts(groonga_table.name,
                                   groonga_record_batch.to_table)
+            n_rows += rows.size
             @logger.info("Importing: #{target_message}: " +
                          "#{n_rows}(+#{rows.size})")
           end
