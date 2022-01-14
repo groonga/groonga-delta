@@ -14,16 +14,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class ApplyCommandTest < Test::Unit::TestCase
+  include Helper
+
   def run_command(*args)
     command_line = GroongaDelta::ApplyCommand.new
     command_line.run(["--dir=#{@dir}", *args])
   end
 
   def setup
-    @host = "127.0.01"
+    @host = "127.0.0.1"
+    @port = extract_service_port(load_docker_compose_yml["services"]["groonga"])
     Dir.mktmpdir do |dir|
       @dir = dir
-      @db_dir = "#{@dir}/db"
       @delta_dir = "#{@dir}/delta"
       @delta_schema_dir = "#{@delta_dir}/schema"
       @delta_data_dir = "#{@delta_dir}/data"
@@ -31,34 +33,16 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
   end
 
-  def generate_config(port)
+  def generate_config
     data = {
       "delta_dir" => @delta_dir,
       "groonga" => {
-        "url" => "http://#{@host}:#{port}",
+        "url" => "http://#{@host}:#{@port}",
       },
     }
     File.open(File.join(@dir, "config.yaml"), "w") do |output|
       output.puts(data.to_yaml)
     end
-  end
-
-  def decide_groonga_server_port
-    static_port = 50041
-    10.times do
-      begin
-        TCPServer.open(@host, static_port) do |server|
-          return static_port
-        end
-      rescue SystemCallError
-        sleep(0.1)
-      end
-    end
-
-    dynamic_port = TCPServer.open(@host, 0) do |server|
-      server.addr[1]
-    end
-    dynamic_port
   end
 
   def wait_groonga_http_shutdown(pid_file_path)
@@ -72,32 +56,21 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
   end
 
-  def open_groonga_client(port, &block)
-    Groonga::Client.open(url: "http://#{@host}:#{port}",
+  def open_groonga_client(&block)
+    Groonga::Client.open(url: "http://#{@host}:#{@port}",
                          backend: :synchronous,
                          &block)
   end
 
   def run_groonga
-    FileUtils.mkdir_p(@db_dir)
-    port = decide_groonga_server_port
-    pid_file_path = Pathname("#{@db_dir}/groonga.pid")
     begin
-      pid = spawn("groonga",
-                  "--bind-address", @host,
-                  "--log-path", "#{@db_dir}/groonga.log",
-                  "--pid-path", pid_file_path.to_s,
-                  "--port", port.to_s,
-                  "--protocol", "http",
-                  "--query-log-path", "#{@db_dir}/query.log",
-                  "-s",
-                  "-n",
-                  "#{@db_dir}/db")
+      system(*docker_compose_command_line("down"))
+      pid = spawn(*docker_compose_command_line("up", "groonga"))
       begin
         begin
           n_retried = 0
           begin
-            open_groonga_client(port) do |client|
+            open_groonga_client do |client|
               client.status
             end
           rescue Groonga::Client::Error
@@ -109,17 +82,18 @@ class ApplyCommandTest < Test::Unit::TestCase
         rescue
           if Process.waitpid(pid, Process::WNOHANG)
             pid = nil
+            system(*docker_compose_command_line("down"))
             raise
           end
           retry
         end
-        yield(port)
+        yield
       ensure
         if pid
-          open_groonga_client(port) do |client|
+          open_groonga_client do |client|
             client.shutdown
           end
-          wait_groonga_http_shutdown(pid_file_path)
+          system(*docker_compose_command_line("down"))
           Process.waitpid(pid)
         end
       end
@@ -127,11 +101,9 @@ class ApplyCommandTest < Test::Unit::TestCase
   end
 
   def dump_db
-    output = Tempfile.new("groonga-sync-dump")
-    pid = spawn("groonga", "#{@db_dir}/db", "dump",
-                out: output.path)
-    Process.waitpid(pid)
-    output.read
+    open_groonga_client do |client|
+      client.dump.raw
+    end
   end
 
   def add_schema(schema, packed: false)
@@ -172,8 +144,8 @@ class ApplyCommandTest < Test::Unit::TestCase
   end
 
   def test_packed_on_initialization
-    run_groonga do |port|
-      generate_config(port)
+    run_groonga do
+      generate_config
       add_schema(<<-SCHEMA, packed: true)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
@@ -187,7 +159,7 @@ load --table Items
 ]
       LOAD
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
@@ -203,8 +175,8 @@ load --table Items
   end
 
   def test_packed_after_initialization
-    run_groonga do |port|
-      generate_config(port)
+    run_groonga do
+      generate_config
       add_schema(<<-SCHEMA, packed: true)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
@@ -218,7 +190,7 @@ load --table Items
 ]
       LOAD
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
@@ -236,7 +208,7 @@ load --table Items
 column_remove Items price
       SCHEMA
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
@@ -252,8 +224,8 @@ load --table Items
   end
 
   def test_non_packed_after_initialization
-    run_groonga do |port|
-      generate_config(port)
+    run_groonga do
+      generate_config
       add_schema(<<-SCHEMA, packed: true)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
@@ -267,7 +239,7 @@ load --table Items
 ]
       LOAD
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
@@ -284,7 +256,7 @@ load --table Items
 column_remove Items price
       SCHEMA
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 
@@ -299,8 +271,8 @@ load --table Items
   end
 
   def test_non_packed_on_initialization
-    run_groonga do |port|
-      generate_config(port)
+    run_groonga do
+      generate_config
       add_schema(<<-SCHEMA)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
@@ -314,7 +286,7 @@ load --table Items
 ]
       LOAD
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
@@ -330,8 +302,8 @@ load --table Items
   end
 
   def test_upsert_parquet
-    run_groonga do |port|
-      generate_config(port)
+    run_groonga do
+      generate_config
       add_schema(<<-SCHEMA)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
@@ -341,7 +313,7 @@ column_create Items price COLUMN_SCALAR UInt32
                                "name" => ["Shoes", "Hat"])
       add_upsert_data("Items", table)
       assert_true(run_command)
-      assert_equal(<<-DUMP, dump_db)
+      assert_equal(<<-DUMP.chomp, dump_db)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32

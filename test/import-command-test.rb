@@ -14,6 +14,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class ImportCommandTest < Test::Unit::TestCase
+  include Helper
+
   def run_command(*args)
     command_line = GroongaDelta::ImportCommand.new
     command_line.run(["--dir=#{@dir}", *args])
@@ -26,10 +28,6 @@ class ImportCommandTest < Test::Unit::TestCase
     end
   end
 
-  def fixture_path(*components)
-    File.join(__dir__, "fixture", *components)
-  end
-
   def generate_config(mysql_version, port, checksum)
     case ENV["GROONGA_DELTA_IMPORT_MYSQL_SOURCE_BACKEND"]
     when "mysqlbinlog"
@@ -37,15 +35,12 @@ class ImportCommandTest < Test::Unit::TestCase
         socket.connect("128.0.0.1", 7)
         Socket.unpack_sockaddr_in(socket.getsockname)[1]
       end
-      mysqlbinlog = [
-        "docker-compose",
-        "--file", fixture_path("docker-compose.yml"),
-        "run",
-        "--rm",
-        "--volume", "#{@dir}:#{@dir}",
-        "--user", "#{Process.uid}",
-        "mysql-#{mysql_version}-mysqlbinlog",
-      ]
+      mysqlbinlog =
+        docker_compose_command_line("run",
+                                    "--rm",
+                                    "--volume", "#{@dir}:#{@dir}",
+                                    "--user", "#{Process.uid}",
+                                    "mysql-#{mysql_version}-mysqlbinlog")
     else
       host = "127.0.0.1"
       mysqlbinlog = nil
@@ -93,12 +88,8 @@ class ImportCommandTest < Test::Unit::TestCase
     end
   end
 
-  def extract_port(service)
-    Integer(service["ports"].first.split(":")[1], 10)
-  end
-
   def run_mysqld(version)
-    config = YAML.load(File.read(fixture_path("docker-compose.yml")))
+    config = load_docker_compose_yml
     case version
     when "5.5"
       target_service = "mysql-#{version}-replica"
@@ -111,13 +102,11 @@ class ImportCommandTest < Test::Unit::TestCase
       up_service = target_service
       checksum = "crc32"
     end
-    target_port = extract_port(config["services"][target_service])
-    source_port = extract_port(config["services"][source_service])
-    up_port = extract_port(config["services"][up_service])
-    pid = Dir.chdir(fixture_path) do
-      system("docker-compose", "down")
-      spawn("docker-compose", "up", up_service)
-    end
+    target_port = extract_service_port(config["services"][target_service])
+    source_port = extract_service_port(config["services"][source_service])
+    up_port = extract_service_port(config["services"][up_service])
+    system(*docker_compose_command_line("down"))
+    pid = spawn(*docker_compose_command_line("up", up_service))
     begin
       loop do
         begin
@@ -132,9 +121,7 @@ class ImportCommandTest < Test::Unit::TestCase
       end
       yield(target_port, source_port, checksum)
     ensure
-      Dir.chdir(fixture_path) do
-        system("docker-compose", "down")
-      end
+      system(*docker_compose_command_line("down"))
       Process.waitpid(pid)
     end
   end

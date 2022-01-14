@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-#
 # Copyright (C) 2021-2022  Sutou Kouhei <kou@clear-code.com>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,22 +13,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# $VERBOSE = true
+module Helper
+  private
+  def fixture_path(*components)
+    File.join(__dir__, "fixture", *components)
+  end
 
-test_dir = __dir__
+  def docker_compose_yml
+    fixture_path("docker-compose.yml")
+  end
 
-require "socket"
-require "stringio"
-require "tempfile"
-require "tmpdir"
+  def load_docker_compose_yml
+    YAML.load(File.read(docker_compose_yml))
+  end
 
-require "parquet"
-require "mysql2"
+  def extract_service_port(service)
+    Integer(service["ports"].first.split(":")[1], 10)
+  end
 
-require "test-unit"
-
-require_relative "../lib/groonga-delta"
-
-require_relative "helper"
-
-exit(Test::Unit::AutoRunner.run(true, test_dir))
+  def docker_compose_command_line(*args)
+    ["docker-compose", "--file", docker_compose_yml, *args]
+  end
+end

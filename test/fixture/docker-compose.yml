@@ -57,4 +57,4 @@ services:
   groonga:
     image: groonga/groonga:11.1.0-debian
     ports:
-      - "0.0.0.0:10041:10041"
+      - "0.0.0.0:30041:10041"
