@@ -15,6 +15,8 @@
 
 require "fileutils"
 
+require "parquet"
+
 require "groonga/client"
 
 module GroongaDelta
