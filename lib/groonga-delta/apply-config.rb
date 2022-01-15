@@ -40,11 +40,7 @@ module GroongaDelta
       end
 
       def read_timeout
-        if @data.key?("read_timeout")
-          ::Groonga::Client::Default::READ_TIMEOUT
-        else
-          @data["read_timeout"]
-        end
+        @data["read_timeout"] || ::Groonga::Client::Default::READ_TIMEOUT
       end
     end
 
