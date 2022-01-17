@@ -22,7 +22,7 @@ module GroongaDelta
   class MySQLSource
     def initialize(config, status)
       @logger = config.logger
-      @writer = Writer.new(config.delta_dir)
+      @writer = Writer.new(@logger, config.delta_dir)
       @config = config.mysql
       @binlog_dir = @config.binlog_dir
       @mapping = config.mapping
@@ -325,7 +325,9 @@ module GroongaDelta
           n_rows = 0
           batch_size = @config.initial_import_batch_size
           enumerator.each_slice(batch_size) do |rows|
+            @logger.info("Generating records: #{target_message}")
             groonga_record_batch = groonga_table.generate_record_batch(rows)
+            @logger.info("Generated records: #{target_message}")
             @writer.write_upserts(groonga_table.name,
                                   groonga_record_batch.to_table)
             n_rows += rows.size

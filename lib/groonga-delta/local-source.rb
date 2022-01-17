@@ -21,7 +21,7 @@ module GroongaDelta
   class LocalSource
     def initialize(config, status)
       @logger = config.logger
-      @writer = Writer.new(config.delta_dir)
+      @writer = Writer.new(@logger, config.delta_dir)
       @config = config.local
       @status = status.local
     end
@@ -43,6 +43,7 @@ module GroongaDelta
       targets.sort_by! {|number, _path| number}
       parser = create_command_parser
       targets.each do |number, path|
+        @logger.info("Start importing: #{path}")
         File.open(path) do |input|
           last_line = nil
           input.each_line do |line|
@@ -53,6 +54,7 @@ module GroongaDelta
             parser << line
           end
         end
+        @logger.info("Imported: #{path}")
         @status.update("number" => number)
       end
     end

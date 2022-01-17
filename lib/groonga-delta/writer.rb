@@ -21,7 +21,8 @@ require "parquet"
 
 module GroongaDelta
   class Writer
-    def initialize(dir)
+    def initialize(logger, dir)
+      @logger = logger
       @dir = dir
     end
 
@@ -87,6 +88,7 @@ module GroongaDelta
         temporary_path = "#{dir}/.#{base_name}"
         path = "#{dir}/#{base_name}"
       end
+      @logger.info("Start writing: #{temporary_path}")
       FileUtils.mkdir_p(File.dirname(temporary_path))
       if open_output
         File.open(temporary_path, "w") do |output|
@@ -101,6 +103,7 @@ module GroongaDelta
       else
         FileUtils.mv(temporary_path, path)
       end
+      @logger.info("Wrote: #{path}")
     end
 
     def write_data(table,
