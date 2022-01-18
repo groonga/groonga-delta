@@ -159,6 +159,10 @@ module GroongaDelta
       def dir
         resolve_path(@data["dir"] || "local")
       end
+
+      def initial_max_number
+        @data["initial_max_number"] || Float::INFINITY
+      end
     end
   end
 end

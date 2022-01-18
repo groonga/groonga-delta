@@ -43,6 +43,10 @@ module GroongaDelta
       targets.sort_by! {|number, _path| number}
       parser = create_command_parser
       targets.each do |number, path|
+        if latest_number == -1 and number > @config.initial_max_number
+          @logger.info("Stopped initial import")
+          break
+        end
         @logger.info("Start importing: #{path}")
         File.open(path) do |input|
           last_line = nil
@@ -101,8 +105,8 @@ module GroongaDelta
     def write_command(command)
       case command.command_name
       when "delete"
-        if command.key
-          @writer.write_deletes(command.delete, [command.key])
+        if command[:key]
+          @writer.write_deletes(command[:table], [command[:key]])
         else
           raise "delete by not _key isn't supported yet: #{command.to_s}"
         end

@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-class ImportCommandTest < Test::Unit::TestCase
+class ImportCommandMySQLTest < Test::Unit::TestCase
   include Helper
 
   def run_command(*args)
@@ -172,7 +172,7 @@ class ImportCommandTest < Test::Unit::TestCase
   end
 
   data(:version, ["5.5", "5.7"])
-  def test_mysql
+  def test_basic
     run_mysqld(data[:version]) do |target_port, source_port, checksum|
       generate_config(data[:version], target_port, checksum)
       setup_initial_records(source_port)
