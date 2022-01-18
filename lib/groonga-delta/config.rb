@@ -71,6 +71,10 @@ module GroongaDelta
       @data["log_max_size"] || (1024 * 1024)
     end
 
+    def log_period_suffix
+      @data["log_period_suffix"] || "%Y-%m-%d"
+    end
+
     def log_level
       @data["log_level"] || "info"
     end
@@ -88,7 +92,8 @@ module GroongaDelta
                  log_max_size,
                  formatter: LTSVLogFormatter.new,
                  level: log_level,
-                 progname: @name)
+                 progname: @name,
+                 shift_period_suffix: log_period_suffix)
     end
   end
 end
