@@ -31,7 +31,7 @@ module GroongaDelta
           loop do
             process
             break unless @server
-            sleep(config.polling_interval)
+            sleep(@config.polling_interval)
           end
           true
         rescue => error
