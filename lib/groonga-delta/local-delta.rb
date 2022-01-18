@@ -38,12 +38,13 @@ module GroongaDelta
         backend: :synchronous,
       }
       Groonga::Client.open(client_options) do |client|
-        processor = CommandProcessor.new(client,
+        processor = CommandProcessor.new(@logger,
+                                         client,
                                          target_commands: [],
                                          target_tables: [],
                                          target_columns: [])
         targets.sort_by(&:timestamp).each do |target|
-          target.sync(client, processor)
+          target.apply(@logger, client, processor)
           @status.update("start_time" => [
                            target.timestamp.to_i,
                            target.timestamp.nsec,
@@ -205,7 +206,19 @@ module GroongaDelta
       end
     end
 
+    module ApplyLoggable
+      private
+      def apply_log(logger, path)
+        logger.info("Start applying: #{path}")
+        result = yield
+        logger.info("Applied: #{path}")
+        result
+      end
+    end
+
     class SchemaTarget
+      include ApplyLoggable
+
       attr_reader :path
       attr_reader :timestamp
       def initialize(path, timestamp)
@@ -213,12 +226,16 @@ module GroongaDelta
         @timestamp = timestamp
       end
 
-      def sync(client, processor)
-        processor.load(@path)
+      def apply(logger, client, processor)
+        apply_log(logger, @path) do
+          processor.load(@path)
+        end
       end
     end
 
     class PackedSchemaTarget
+      include ApplyLoggable
+
       attr_reader :path
       attr_reader :timestamp
       attr_reader :targets
@@ -228,14 +245,18 @@ module GroongaDelta
         @targets = []
       end
 
-      def sync(client, processor)
-        @targets.sort_by(&:timestamp).each do |target|
-          target.sync(client, processor)
+      def apply(logger, client, processor)
+        apply_log(logger, @path) do
+          @targets.sort_by(&:timestamp).each do |target|
+            target.apply(logger, client, processor)
+          end
         end
       end
     end
 
     class TableTarget
+      include ApplyLoggable
+
       attr_reader :path
       attr_reader :timestamp
       attr_reader :name
@@ -247,22 +268,26 @@ module GroongaDelta
         @action = action
       end
 
-      def sync(client, processor)
-        if @path.end_with?(".grn")
-          processor.load(@path)
-        else
-          # TODO: Add support for @action == "delete"
-          table = Arrow::Table.load(@path)
-          command = Groonga::Command::Load.new(table: @name,
-                                               values: table)
-          response = client.load(table: command[:table],
-                                 values: command[:values])
-          processor.process_response(response, command)
+      def apply(logger, client, processor)
+        apply_log(logger, @path) do
+          if @path.end_with?(".grn")
+            processor.load(@path)
+          else
+            # TODO: Add support for @action == "delete"
+            table = Arrow::Table.load(@path)
+            command = Groonga::Command::Load.new(table: @name,
+                                                 values: table,
+                                                 command_version: "3")
+            response = client.load(command.arguments)
+            processor.process_response(response, command)
+          end
         end
       end
     end
 
     class PackedTableTarget
+      include ApplyLoggable
+
       attr_reader :path
       attr_reader :timestamp
       attr_reader :name
@@ -274,16 +299,50 @@ module GroongaDelta
         @targets = []
       end
 
-      def sync(client, processor)
-        @targets.sort_by(&:timestamp).each do |target|
-          target.sync(client, processor)
+      def apply(logger, client, processor)
+        apply_log(logger, @path) do
+          @targets.sort_by(&:timestamp).each do |target|
+            target.apply(logger, client, processor)
+          end
         end
       end
     end
 
     class CommandProcessor < Groonga::Client::CommandProcessor
+      def initialize(logger, *args)
+        @logger = logger
+        super(*args)
+      end
+
       def process_response(response, command)
-        # TODO
+        message = ""
+        case command.command_name
+        when "load"
+          command.arguments.delete(:values)
+          if response.success?
+            message = "#{response.n_loaded_records}: "
+          else
+            load_response = Groonga::Client::Response::Load.new(command,
+                                                                response.header,
+                                                                response.body)
+            message = "#{load_response.n_loaded_records}: "
+          end
+        end
+        if response.success?
+          @logger.info("Processed: " +
+                       "#{response.elapsed_time}: " +
+                       "#{command.command_name}: " +
+                       message +
+                       "#{command.to_command_format}")
+        else
+          @logger.error("Failed to process: " +
+                        "#{response.return_code}: " +
+                        "#{response.elapsed_time}: " +
+                        "#{response.error_message}: " +
+                        "#{command.command_name}: " +
+                        message +
+                        "#{command.to_command_format}")
+        end
       end
     end
   end
