@@ -156,6 +156,7 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
                  "(1, 'shoes <br> a', '2022-01-19 00:00:01'), " +
                  "(2, 'shoes <br> b', '2022-01-19 00:00:02'), " +
                  "(3, 'shoes <br> c', '2022-01-19 00:00:03')");
+    client.close
   end
 
   def setup_changes(source_port)
@@ -171,6 +172,7 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
     client.query("INSERT INTO shoes VALUES " +
                  "(40, 'shoes <br> D', '2022-01-19 00:00:40')");
     client.query("UPDATE shoes SET name = 'shoes <br> X' WHERE id = 40");
+    client.close
   end
 
   def read_table_files(table)
