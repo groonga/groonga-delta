@@ -19,6 +19,8 @@
 
 test_dir = __dir__
 
+ENV["TEST_UNIT_MAX_DIFF_TARGET_STRING_SIZE"] ||= "10000"
+
 require "socket"
 require "stringio"
 require "tempfile"

@@ -47,7 +47,19 @@ module GroongaDelta
               output.print(",")
             end
             output.puts
-            output.print(record.to_json)
+            json = "{"
+            record.each_with_index do |(key, value), i|
+              json << "," unless i.zero?
+              json << "#{key.to_s.to_json}:"
+              case value
+              when Time
+                json << value.dup.localtime.strftime("%Y-%m-%d %H:%M:%S").to_json
+              else
+                json << value.to_json
+              end
+            end
+            json << "}"
+            output.print(json)
           end
           unless first_record
             output.puts()

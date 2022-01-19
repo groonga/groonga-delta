@@ -75,6 +75,13 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
                 "name_text" => {
                   "expression" => "html_untag(name)",
                 },
+                "created_at" => {
+                  "expression" => "created_at",
+                  "source_column_names" => [
+                    "created_at",
+                  ],
+                  "type" => "Time",
+                },
                 "source" => "shoes",
               },
             },
@@ -126,22 +133,29 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
     end
   end
 
+  def time_zone_offset
+    Time.now.strftime("%:z")
+  end
+
   def setup_initial_records(source_port)
     client = Mysql2::Client.new(host: "127.0.0.1",
                                 port: source_port,
                                 username: "root")
+    client.query("SET GLOBAL time_zone = '#{time_zone_offset}'")
+    client.query("SET time_zone = '#{time_zone_offset}'")
     client.query("CREATE DATABASE importer")
     client.query("USE importer")
     client.query(<<-SQL)
       CREATE TABLE shoes (
         id int PRIMARY KEY,
-        name text
+        name text,
+        created_at timestamp DEFAULT CURRENT_TIMESTAMP
       );
     SQL
     client.query("INSERT INTO shoes VALUES " +
-                 "(1, 'shoes <br> a'), " +
-                 "(2, 'shoes <br> b'), " +
-                 "(3, 'shoes <br> c')");
+                 "(1, 'shoes <br> a', '2022-01-19 00:00:01'), " +
+                 "(2, 'shoes <br> b', '2022-01-19 00:00:02'), " +
+                 "(3, 'shoes <br> c', '2022-01-19 00:00:03')");
   end
 
   def setup_changes(source_port)
@@ -150,11 +164,12 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
                                 username: "root",
                                 database: "importer")
     client.query("INSERT INTO shoes VALUES " +
-                 "(10, 'shoes <br> A'), " +
-                 "(20, 'shoes <br> B'), " +
-                 "(30, 'shoes <br> C')");
+                 "(10, 'shoes <br> A', '2022-01-19 00:00:10'), " +
+                 "(20, 'shoes <br> B', '2022-01-19 00:00:20'), " +
+                 "(30, 'shoes <br> C', '2022-01-19 00:00:30')");
     client.query("DELETE FROM shoes WHERE id >= 20")
-    client.query("INSERT INTO shoes VALUES (40, 'shoes <br> D')");
+    client.query("INSERT INTO shoes VALUES " +
+                 "(40, 'shoes <br> D', '2022-01-19 00:00:40')");
     client.query("UPDATE shoes SET name = 'shoes <br> X' WHERE id = 40");
   end
 
@@ -178,33 +193,33 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
       setup_initial_records(source_port)
       assert_true(run_command)
       assert_equal(<<-UPSERT, read_table_files("items"))
-\t_key\tid\tname\tname_text\tsource
-0\tshoes-1\t1 \tshoes <br> a\tshoes  a \tshoes 
-1\tshoes-2\t2 \tshoes <br> b\tshoes  b \tshoes 
-2\tshoes-3\t3 \tshoes <br> c\tshoes  c \tshoes 
+\t_key\tid\tname\tname_text\t               created_at\tsource
+0\tshoes-1\t1 \tshoes <br> a\tshoes  a \t2022-01-19T00:00:01#{time_zone_offset}\tshoes 
+1\tshoes-2\t2 \tshoes <br> b\tshoes  b \t2022-01-19T00:00:02#{time_zone_offset}\tshoes 
+2\tshoes-3\t3 \tshoes <br> c\tshoes  c \t2022-01-19T00:00:03#{time_zone_offset}\tshoes 
       UPSERT
       setup_changes(source_port)
       assert_true(run_command)
       assert_equal(<<-DELTA, read_table_files("items"))
-\t_key\tid\tname\tname_text\tsource
-0\tshoes-1\t1 \tshoes <br> a\tshoes  a \tshoes 
-1\tshoes-2\t2 \tshoes <br> b\tshoes  b \tshoes 
-2\tshoes-3\t3 \tshoes <br> c\tshoes  c \tshoes 
+\t_key\tid\tname\tname_text\t               created_at\tsource
+0\tshoes-1\t1 \tshoes <br> a\tshoes  a \t2022-01-19T00:00:01#{time_zone_offset}\tshoes 
+1\tshoes-2\t2 \tshoes <br> b\tshoes  b \t2022-01-19T00:00:02#{time_zone_offset}\tshoes 
+2\tshoes-3\t3 \tshoes <br> c\tshoes  c \t2022-01-19T00:00:03#{time_zone_offset}\tshoes 
 load --table items
 [
-{"_key":"shoes-10","id":"10","name":"shoes <br> A","name_text":"shoes  A","source":"shoes"},
-{"_key":"shoes-20","id":"20","name":"shoes <br> B","name_text":"shoes  B","source":"shoes"},
-{"_key":"shoes-30","id":"30","name":"shoes <br> C","name_text":"shoes  C","source":"shoes"}
+{"_key":"shoes-10","id":"10","name":"shoes <br> A","name_text":"shoes  A","created_at":"2022-01-19 00:00:10","source":"shoes"},
+{"_key":"shoes-20","id":"20","name":"shoes <br> B","name_text":"shoes  B","created_at":"2022-01-19 00:00:20","source":"shoes"},
+{"_key":"shoes-30","id":"30","name":"shoes <br> C","name_text":"shoes  C","created_at":"2022-01-19 00:00:30","source":"shoes"}
 ]
 delete --key "shoes-20" --table "items"
 delete --key "shoes-30" --table "items"
 load --table items
 [
-{"_key":"shoes-40","id":"40","name":"shoes <br> D","name_text":"shoes  D","source":"shoes"}
+{"_key":"shoes-40","id":"40","name":"shoes <br> D","name_text":"shoes  D","created_at":"2022-01-19 00:00:40","source":"shoes"}
 ]
 load --table items
 [
-{"_key":"shoes-40","id":"40","name":"shoes <br> X","name_text":"shoes  X","source":"shoes"}
+{"_key":"shoes-40","id":"40","name":"shoes <br> X","name_text":"shoes  X","created_at":"2022-01-19 00:00:40","source":"shoes"}
 ]
       DELTA
     end
