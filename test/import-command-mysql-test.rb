@@ -186,13 +186,17 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
     data
   end
 
+  def read_log
+    File.read(File.join(@dir, "log", "groonga-delta-import.log"))
+  end
+
   data(:version, ["5.5", "5.7"])
   def test_basic
     run_mysqld(data[:version]) do |target_port, source_port, checksum|
       generate_config(data[:version], target_port, checksum)
       setup_initial_records(source_port)
       assert_true(run_command)
-      assert_equal(<<-UPSERT, read_table_files("items"))
+      assert_equal(<<-UPSERT, read_table_files("items"), read_log)
 \t_key\tid\tname\tname_text\t               created_at\tsource
 0\tshoes-1\t1 \tshoes <br> a\tshoes  a \t2022-01-19T00:00:01#{time_zone_offset}\tshoes 
 1\tshoes-2\t2 \tshoes <br> b\tshoes  b \t2022-01-19T00:00:02#{time_zone_offset}\tshoes 
@@ -200,7 +204,7 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
       UPSERT
       setup_changes(source_port)
       assert_true(run_command)
-      assert_equal(<<-DELTA, read_table_files("items"))
+      assert_equal(<<-DELTA, read_table_files("items"), read_log)
 \t_key\tid\tname\tname_text\t               created_at\tsource
 0\tshoes-1\t1 \tshoes <br> a\tshoes  a \t2022-01-19T00:00:01#{time_zone_offset}\tshoes 
 1\tshoes-2\t2 \tshoes <br> b\tshoes  b \t2022-01-19T00:00:02#{time_zone_offset}\tshoes 
