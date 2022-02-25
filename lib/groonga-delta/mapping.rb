@@ -280,6 +280,17 @@ module GroongaDelta
         def html_untag(text)
           text.gsub(/<.*?>/, "")
         end
+
+        def groonga_escape_query(text)
+          case text
+          when /[+\-><~*()"\\: ]/
+            "\"#{text.gsub("\"", "\\\"")}\""
+          when "OR"
+            "\"OR\""
+          else
+            text
+          end
+        end
       end
 
       def initialize(source_record)
