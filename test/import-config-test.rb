@@ -57,7 +57,8 @@ class InportConfigTest < Test::Unit::TestCase
       end
 
       def test_unknown_unit
-        assert_raise(ArgumentError.new("invalid size value: \"512X\"")) do
+        message = "invalid size value: \"512X\""
+        assert_raise(GroongaDelta::ConfigError.new(message)) do
           initial_import_batch_size("512X")
         end
       end
