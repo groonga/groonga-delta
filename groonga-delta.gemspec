@@ -36,11 +36,12 @@ Gem::Specification.new do |spec|
   spec.summary, spec.description, = description.split(/\n\n+/, 3)
   spec.license = "GPL-3.0+"
   spec.files = [
-    "README.md",
-    "LICENSE.txt",
-    "Rakefile",
-    "Gemfile",
     "#{spec.name}.gemspec",
+    "Gemfile",
+    "LICENSE.txt",
+    "README.md",
+    "Rakefile",
+    "doc/text/news.md",
   ]
   spec.files += Dir.glob("lib/**/*.rb")
   Dir.chdir("bin") do
