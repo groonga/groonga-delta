@@ -37,9 +37,9 @@ module GroongaDelta
     private
     def validate_on_error(on_error)
       case on_error
-      when :ignore
-      when :warning
-      when :error
+      when "ignore"
+      when "warning"
+      when "error"
       else
         message = "on_error must be ignore, warning or error: " +
                   on_error.inspect
