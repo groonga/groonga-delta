@@ -177,7 +177,7 @@ class ImportCommandMySQLTest < Test::Unit::TestCase
 
   def read_table_files(table)
     data = ""
-    Dir.glob("#{@dir}/delta/data/#{table}/*.{grn,parquet}").sort.each do |file|
+    Dir.glob("#{@dir}/delta/data/#{table}/{*/,}*.{grn,parquet}").sort.each do |file|
       case File.extname(file)
       when ".grn"
         data << File.read(file)
