@@ -140,7 +140,7 @@ module GroongaDelta
           when /\A(\d+)[gG]\z/
             Integer($1, 10) * 1024 * 1024 * 1024
           else
-            raise ArgumentError, "invalid size value: #{value.inspect}"
+            raise ConfigError, "invalid size value: #{value.inspect}"
           end
         else
           value

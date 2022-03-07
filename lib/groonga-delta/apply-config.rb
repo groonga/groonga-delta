@@ -19,6 +19,11 @@ module GroongaDelta
   class ApplyConfig < Config
     def initialize(dir)
       super("groonga-delta-apply", dir)
+      validate_on_error(on_error)
+    end
+
+    def on_error
+      @data["on_error"] || "error"
     end
 
     def groonga
@@ -27,6 +32,19 @@ module GroongaDelta
 
     def local
       Local.new(@dir, @data["local"] || {})
+    end
+
+    private
+    def validate_on_error(on_error)
+      case on_error
+      when :ignore
+      when :warning
+      when :error
+      else
+        message = "on_error must be ignore, warning or error: " +
+                  on_error.inspect
+        raise ConfigError, message
+      end
     end
 
     class Groonga

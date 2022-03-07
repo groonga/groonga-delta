@@ -108,7 +108,8 @@ module GroongaDelta
         if command[:key]
           @writer.write_deletes(command[:table], [command[:key]])
         else
-          raise "delete by not _key isn't supported yet: #{command.to_s}"
+          raise NotImplementedError,
+                "delete by not _key isn't supported yet: #{command.to_s}"
         end
       else
         @writer.write_schema(command)

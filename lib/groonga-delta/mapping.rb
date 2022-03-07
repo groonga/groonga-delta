@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+require_relative "error"
+
 module GroongaDelta
   class Mapping
     def initialize(data)
@@ -248,7 +250,7 @@ module GroongaDelta
             value
           end
         else
-          raise "Unknown type: #{@type}: #{value.inspect}"
+          raise ConfigError, "Unknown type: #{@type}: #{value.inspect}"
         end
       end
 

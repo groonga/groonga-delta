@@ -15,9 +15,10 @@
 
 require "fileutils"
 
+require "groonga/client"
 require "parquet"
 
-require "groonga/client"
+require_relative "error"
 
 module GroongaDelta
   class LocalDelta
@@ -38,7 +39,7 @@ module GroongaDelta
         backend: :synchronous,
       }
       Groonga::Client.open(client_options) do |client|
-        processor = CommandProcessor.new(@logger,
+        processor = CommandProcessor.new(@config,
                                          client,
                                          target_commands: [],
                                          target_tables: [],
@@ -309,8 +310,8 @@ module GroongaDelta
     end
 
     class CommandProcessor < Groonga::Client::CommandProcessor
-      def initialize(logger, *args)
-        @logger = logger
+      def initialize(config, *args)
+        @config = config
         super(*args)
       end
 
@@ -329,19 +330,26 @@ module GroongaDelta
           end
         end
         if response.success?
-          @logger.info("Processed: " +
-                       "#{response.elapsed_time}: " +
-                       "#{command.command_name}: " +
-                       message +
-                       "#{command.to_command_format}")
+          @config.logger.info("Processed: " +
+                              "#{response.elapsed_time}: " +
+                              "#{command.command_name}: " +
+                              message +
+                              "#{command.to_command_format}")
         else
-          @logger.error("Failed to process: " +
-                        "#{response.return_code}: " +
-                        "#{response.elapsed_time}: " +
-                        "#{response.error_message}: " +
-                        "#{command.command_name}: " +
-                        message +
-                        "#{command.to_command_format}")
+          failed_message = "Failed to process: " +
+                           "#{response.return_code}: " +
+                           "#{response.elapsed_time}: " +
+                           "#{response.error_message}: " +
+                           "#{command.command_name}: " +
+                           message +
+                           "#{command.to_command_format}"
+          case @config.on_error
+          when "ignore"
+          when "warning"
+            @config.logger.warn(failed_message)
+          when "error"
+            raise ExecutionError, failed_message
+          end
         end
       end
     end

@@ -16,6 +16,7 @@
 require "arrow"
 require "mysql2"
 
+require_relative "error"
 require_relative "writer"
 
 module GroongaDelta
@@ -204,7 +205,7 @@ module GroongaDelta
           message << "--- error ----\n"
           message << error_read.read
           message << "--------------\n"
-          raise message
+          raise ProcessError, message
         end
       end
     end
