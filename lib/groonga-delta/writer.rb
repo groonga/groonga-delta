@@ -96,7 +96,8 @@ module GroongaDelta
         temporary_path = "#{dir}/.#{packed_dir_base_name}/#{base_name}"
         path = "#{dir}/#{packed_dir_base_name}/#{base_name}"
       else
-        dir = "#{@dir}/#{prefix}"
+        day = timestamp.strftime("%Y-%m-%d")
+        dir = "#{@dir}/#{prefix}/#{day}"
         temporary_path = "#{dir}/.#{base_name}"
         path = "#{dir}/#{base_name}"
       end

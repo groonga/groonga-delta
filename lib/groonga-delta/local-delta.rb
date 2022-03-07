@@ -55,7 +55,7 @@ module GroongaDelta
     end
 
     private
-    def build_time(year, month, day, hour, minute, second, nanosecond)
+    def build_time(year, month, day, hour=0, minute=0, second=0, nanosecond=0)
       Time.utc(year,
                month,
                day,
@@ -81,14 +81,30 @@ module GroongaDelta
       end
     end
 
-    def each_target_path(dir, min_timestamp, max_timestamp)
+    def each_target_path(dir,
+                         min_timestamp,
+                         max_timestamp,
+                         accept_directory: true,
+                         &block)
       Dir.glob("#{dir}/*") do |path|
-        next unless File.file?(path)
-        timestamp, action, post_match = parse_timestamp(File.basename(path))
-        next if timestamp.nil?
-        next if min_timestamp and timestamp <= min_timestamp
-        next if max_timestamp and timestamp > max_timestamp
-        yield(path, timestamp, action, post_match)
+        base_name = File.basename(path)
+        if accept_directory and File.directory?(path)
+          timestamp = parse_directory_timestamp(base_name)
+          next if timestamp.nil?
+          next if min_timestamp and timestamp <= min_timestamp
+          next if max_timestamp and timestamp > max_timestamp
+          each_target_path(path,
+                           min_timestamp,
+                           max_timestamp,
+                           accept_directory: false,
+                           &block)
+        elsif File.file?(path)
+          timestamp, action, post_match = parse_file_timestamp(base_name)
+          next if timestamp.nil?
+          next if min_timestamp and timestamp <= min_timestamp
+          next if max_timestamp and timestamp > max_timestamp
+          yield(path, timestamp, action, post_match)
+        end
       end
     end
 
@@ -96,7 +112,7 @@ module GroongaDelta
       return unless min_timestamp.to_i.zero?
       Dir.glob("#{dir}/packed/*") do |path|
         next unless File.directory?(path)
-        timestamp, action, post_match = parse_timestamp(File.basename(path))
+        timestamp, action, post_match = parse_file_timestamp(File.basename(path))
         next if action
         next unless post_match.empty?
         yield(path, timestamp)
@@ -182,7 +198,20 @@ module GroongaDelta
       end
     end
 
-    def parse_timestamp(base_name)
+    def parse_directory_timestamp(base_name)
+      case base_name
+      when /\A(\d{4})-(\d{2})-(\d{2})\z/
+        match = Regexp.last_match
+        year = match[1].to_i
+        month = match[2].to_i
+        day = match[3].to_i
+        build_time(year, month, day)
+      else
+        nil
+      end
+    end
+
+    def parse_file_timestamp(base_name)
       case base_name
       when /\A(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{9})(?:-(\w+))?/
         match = Regexp.last_match

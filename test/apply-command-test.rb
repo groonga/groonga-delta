@@ -106,12 +106,17 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
   end
 
-  def add_schema(schema, packed: false)
+  def add_schema(schema,
+                 per_day: false,
+                 packed: false)
     timestamp = Time.now.utc
     timestamp_string = timestamp.strftime("%Y-%m-%d-%H-%M-%S-%N")
     path = "#{timestamp_string}.grn"
     if packed
       path = "packed/#{timestamp_string}/#{path}"
+    elsif per_day
+      day = timestamp.strftime("%Y-%m-%d")
+      path = "#{day}/#{path}"
     end
     path = "#{@delta_schema_dir}/#{path}"
     FileUtils.mkdir_p(File.dirname(path))
@@ -120,7 +125,10 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
   end
 
-  def add_upsert_data(table, load_or_arrow_table, packed: false)
+  def add_upsert_data(table,
+                      load_or_arrow_table,
+                      per_day: false,
+                      packed: false)
     timestamp = Time.now.utc
     timestamp_string = timestamp.strftime("%Y-%m-%d-%H-%M-%S-%N")
     path = "#{timestamp_string}-upsert"
@@ -131,6 +139,9 @@ class ApplyCommandTest < Test::Unit::TestCase
     end
     if packed
       path = "packed/#{timestamp_string}/#{path}"
+    elsif per_day
+      day = timestamp.strftime("%Y-%m-%d")
+      path = "#{day}/#{path}"
     end
     path = "#{@delta_data_dir}/#{table}/#{path}"
     FileUtils.mkdir_p(File.dirname(path))
@@ -296,6 +307,118 @@ load --table Items
 ["_key","name","price"],
 ["item1","Shoes",0],
 ["item2","Hat",0]
+]
+      DUMP
+    end
+  end
+
+  def test_per_day_only
+    run_groonga do
+      generate_config
+      assert_true(run_command)
+      add_schema(<<-SCHEMA, per_day: true)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      add_upsert_data("Items", <<-LOAD, per_day: true)
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"},
+{"_key": "item2", "name": "Hat"}
+]
+      LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP.chomp, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+    end
+  end
+
+  def test_no_per_day_only
+    run_groonga do
+      generate_config
+      assert_true(run_command)
+      add_schema(<<-SCHEMA)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      add_upsert_data("Items", <<-LOAD)
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"},
+{"_key": "item2", "name": "Hat"}
+]
+      LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP.chomp, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0]
+]
+      DUMP
+    end
+  end
+
+  def test_per_day_mixed
+    run_groonga do
+      generate_config
+      assert_true(run_command)
+      add_schema(<<-SCHEMA, per_day: true)
+table_create Items TABLE_HASH_KEY ShortText
+      SCHEMA
+      add_schema(<<-SCHEMA)
+column_create Items name COLUMN_SCALAR ShortText
+      SCHEMA
+      add_schema(<<-SCHEMA, per_day: true)
+column_create Items price COLUMN_SCALAR UInt32
+      SCHEMA
+      add_upsert_data("Items", <<-LOAD, per_day: true)
+load --table Items
+[
+{"_key": "item1", "name": "Shoes"}
+]
+      LOAD
+      add_upsert_data("Items", <<-LOAD)
+load --table Items
+[
+{"_key": "item2", "name": "Hat"}
+]
+      LOAD
+      add_upsert_data("Items", <<-LOAD, per_day: true)
+load --table Items
+[
+{"_key": "item3", "name": "T-shirt"}
+]
+      LOAD
+      assert_true(run_command)
+      assert_equal(<<-DUMP.chomp, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+
+load --table Items
+[
+["_key","name","price"],
+["item1","Shoes",0],
+["item2","Hat",0],
+["item3","T-shirt",0]
 ]
       DUMP
     end

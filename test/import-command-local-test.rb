@@ -93,7 +93,7 @@ load --table items
 
   def read_delta_files
     data = ""
-    files = Dir.glob("#{@dir}/delta/{schema,data/*}/*.{grn,parquet}")
+    files = Dir.glob("#{@dir}/delta/{schema,data/*}{/*,}/*.{grn,parquet}")
     files = files.sort_by do |file|
       File.basename(file)
     end
