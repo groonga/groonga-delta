@@ -34,6 +34,16 @@ module GroongaDelta
             sleep(@config.polling_interval)
           end
           true
+        rescue Interrupt
+          true
+        rescue SignalException => error
+          case error.signm
+          when "SIGTERM"
+            true
+          else
+            @config.logger.error(error) if @config
+            raise
+          end
         rescue => error
           @config.logger.error(error) if @config
           raise
