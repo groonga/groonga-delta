@@ -131,7 +131,7 @@ module GroongaDelta
         replication_client.start_position = position
         replication_client.open do
           replication_client.each do |event|
-            @config.logger.debug do
+            @logger.debug do
               event.inspect
             end
             case event
