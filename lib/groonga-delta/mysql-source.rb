@@ -67,14 +67,7 @@ module GroongaDelta
               when Mysql2Replication::RowsEvent
                 next if current_file != current_status.last_file
                 next if current_event_position < current_status.last_position
-                import_rows_event(event, current_status) do
-                  case event
-                  when Mysql2Replication::UpdateRowsEvent
-                    event.updated_rows
-                  else
-                    event.rows
-                  end
-                end
+                import_rows_event(event, current_status)
               end
             ensure
               current_event_position = event.next_position
@@ -94,7 +87,12 @@ module GroongaDelta
 
       table = find_table(database_name, table_name)
       groonga_table = source_table.groonga_table
-      target_rows = yield
+      case event
+      when Mysql2Replication::UpdateRowsEvent
+        target_rows = event.updated_rows
+      else
+        target_rows = event.rows
+      end
       groonga_records = target_rows.collect do |row|
         record = build_record(table, row)
         groonga_table.generate_record(record)
