@@ -86,13 +86,23 @@ module GroongaDelta
                          max_timestamp,
                          accept_directory: true,
                          &block)
+      if min_timestamp
+        min_timestamp_day = Time.utc(min_timestamp.year,
+                                     min_timesatmp.month,
+                                     min_timesatmp.day)
+      end
+      if max_timestamp
+        max_timestamp_day = Time.utc(max_timestamp.year,
+                                     max_timesatmp.month,
+                                     max_timesatmp.day)
+      end
       Dir.glob("#{dir}/*") do |path|
         base_name = File.basename(path)
         if accept_directory and File.directory?(path)
           timestamp = parse_directory_timestamp(base_name)
           next if timestamp.nil?
-          next if min_timestamp and timestamp <= min_timestamp
-          next if max_timestamp and timestamp > max_timestamp
+          next if min_timestamp_day and timestamp <= min_timestamp_day
+          next if max_timestamp_day and timestamp > max_timestamp_day
           each_target_path(path,
                            min_timestamp,
                            max_timestamp,
