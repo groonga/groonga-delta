@@ -35,9 +35,11 @@ module GroongaDelta
     def update(data)
       @data.update(data)
       FileUtils.mkdir_p(@dir)
-      File.open(@path, "w") do |output|
+      path_writing = "#{@path}.writing"
+      File.open(path_writing, "w") do |output|
         output.puts(YAML.dump(@data))
       end
+      FileUtils.mv(path_writing, @path)
     end
   end
 end
