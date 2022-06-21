@@ -27,7 +27,7 @@ class ImportCommandLocalVacuumerTest < Test::Unit::TestCase
       @keep_seconds = 1
       data = {
         "vacuum" => {
-          "keep_seconds" => @keep_seconds,
+          "keep_span" => @keep_seconds,
         },
       }
       File.open(File.join(@dir, "config.yaml"), "w") do |output|

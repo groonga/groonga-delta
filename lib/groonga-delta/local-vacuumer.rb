@@ -26,11 +26,11 @@ module GroongaDelta
     end
 
     def vacuum
-      keep_seconds = @config.keep_seconds
-      return if keep_seconds.nil?
-      return if keep_seconds < 0
+      keep_span = @config.keep_span
+      return if keep_span.nil?
+      return if keep_span < 0
       reader = LocalReader.new(@logger, @delta_dir)
-      max_timestamp = Time.now.utc - keep_seconds
+      max_timestamp = Time.now.utc - keep_span
       reader.each(nil, max_timestamp) do |target|
         target.vacuum(@logger)
       end

@@ -174,8 +174,37 @@ module GroongaDelta
         @data = data
       end
 
-      def keep_seconds
-        @data["keep_seconds"]
+      def keep_span
+        resolve_span(@data["keep_span"])
+      end
+
+      private
+      def resolve_span(value)
+        case value
+        when String
+          case value
+          when /\A(\d+(?:\.\d+))(?:s|sec|second|seconds)?\z/
+            Float($1)
+          when /\A(\d+(?:\.\d+))(?:m|min|minute|minutes)\z/
+            Float($1) * 60
+          when /\A(\d+(?:\.\d+))(?:h|hr|hour|hours)\z/
+            Float($1) * 60 * 60
+          when /\A(\d+(?:\.\d+))(?:d|day|days)\z/
+            Float($1) * 60 * 60 * 24
+          when /\A(\d+(?:\.\d+))(?:w|week|weeks)\z/
+            Float($1) * 60 * 60 * 24 * 7
+          when /\A(\d+(?:\.\d+))(?:month|months)\z/
+            # Same as systemd. See systemd.time(7)
+            Float($1) * 60 * 60 * 24 * 30.44
+          when /\A(\d+(?:\.\d+))(?:y|year|years)\z/
+            # Same as systemd. See systemd.time(7)
+            Float($1) * 60 * 60 * 24 * 365.25
+          else
+            raise ConfigError, "invalid span value: #{value.inspect}"
+          end
+        else
+          value
+        end
       end
     end
   end
