@@ -15,15 +15,15 @@
 
 require "groonga/command/parser"
 
-require_relative "writer"
+require_relative "local-writer"
 
 module GroongaDelta
   class LocalSource
-    def initialize(config, status)
+    def initialize(config, status, writer)
       @logger = config.logger
-      @writer = Writer.new(@logger, config.delta_dir)
       @config = config.local
       @status = status.local
+      @writer = writer
     end
 
     def import

@@ -16,6 +16,8 @@
 require_relative "command"
 require_relative "import-config"
 require_relative "import-status"
+require_relative "local-writer"
+require_relative "local-vacuumer"
 
 module GroongaDelta
   class ImportCommand < Command
@@ -23,14 +25,16 @@ module GroongaDelta
     def prepare
       @config = ImportConfig.new(@dir)
       @status = ImportStatus.new(@dir)
+      @writer = LocalWriter.new(@config)
+      @vacuumer = LocalVacuumer.new(@config)
       @sources = []
       if @config.local
         require_relative "local-source"
-        @sources << LocalSource.new(@config, @status)
+        @sources << LocalSource.new(@config, @status, @writer)
       end
       if @config.mysql
         require_relative "mysql-source"
-        @sources << MySQLSource.new(@config, @status)
+        @sources << MySQLSource.new(@config, @status, @writer)
       end
     end
 
@@ -38,6 +42,7 @@ module GroongaDelta
       @sources.each do |source|
         source.import
       end
+      @vacuumer.vacuum
     end
   end
 end

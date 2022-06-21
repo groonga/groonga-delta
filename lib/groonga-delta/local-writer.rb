@@ -20,10 +20,11 @@ require "groonga/command"
 require "parquet"
 
 module GroongaDelta
-  class Writer
-    def initialize(logger, dir)
-      @logger = logger
-      @dir = dir
+  class LocalWriter
+    def initialize(config)
+      @config = config
+      @logger = @config.logger
+      @dir = @config.delta_dir
     end
 
     def write_upserts(table, records, packed: false)

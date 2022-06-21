@@ -17,17 +17,17 @@ require "arrow"
 require "mysql2"
 
 require_relative "error"
-require_relative "writer"
+require_relative "local-writer"
 
 module GroongaDelta
   class MySQLSource
-    def initialize(config, status)
+    def initialize(config, status, writer)
       @logger = config.logger
-      @writer = Writer.new(@logger, config.delta_dir)
       @config = config.mysql
       @binlog_dir = @config.binlog_dir
       @mapping = config.mapping
       @status = status.mysql
+      @writer = writer
       @tables = {}
     end
 

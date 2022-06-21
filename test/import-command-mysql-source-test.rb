@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-class ImportCommandMySQLTest < Test::Unit::TestCase
+class ImportCommandMySQLSourceTest < Test::Unit::TestCase
   include Helper
 
   def run_command(*args)

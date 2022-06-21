@@ -38,6 +38,10 @@ module GroongaDelta
       Local.new(@dir, @data["local"])
     end
 
+    def vacuum
+      Vacuum.new(@data["vacuum"] || {})
+    end
+
     def mapping
       Mapping.new(@data["mapping"] || {})
     end
@@ -162,6 +166,16 @@ module GroongaDelta
 
       def initial_max_number
         @data["initial_max_number"] || Float::INFINITY
+      end
+    end
+
+    class Vacuum
+      def initialize(data)
+        @data = data
+      end
+
+      def keep_seconds
+        @data["keep_seconds"]
       end
     end
   end
