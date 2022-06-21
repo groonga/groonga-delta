@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+require "pp"
+
 module GroongaDelta
   class Error < StandardError
   end
@@ -24,5 +26,23 @@ module GroongaDelta
   end
 
   class ProcessError < Error
+  end
+
+  class GenerationError < Error
+    attr_reader :source_record
+    attr_reader :groonga_column
+    attr_reader :detail
+    def initialize(source_record, groonga_column, detail)
+      @source_record = source_record
+      @groonga_column = groonga_column
+      @detail = detail
+      message =
+        "failed to generate a Groonga record:\n" +
+        "source record: #{PP.pp(source_record, '')}" +
+        "Groonga column: #{PP.pp(groonga_column, '')}" +
+        "detail: #{@detail.message}(#{@detail.class})\n" +
+        @detail.backtrace.join("\n")
+      super(message)
+    end
   end
 end

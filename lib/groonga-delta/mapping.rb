@@ -142,8 +142,12 @@ module GroongaDelta
       def generate_record(source_record)
         record = {}
         @groonga_columns.each do |groonga_column|
-          value = groonga_column.generate_value(source_record)
-          record[groonga_column.name.to_sym] = value
+          begin
+            value = groonga_column.generate_value(source_record)
+            record[groonga_column.name.to_sym] = value
+          rescue => error
+            raise GenerationError.new(source_record, groonga_column, error)
+          end
         end
         record
       end

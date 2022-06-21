@@ -16,6 +16,54 @@
 class MappingTest < Test::Unit::TestCase
   include Helper
 
+  sub_test_case("ShortText") do
+    def setup
+      data = {
+        "items" => {
+          "sources" => [
+            {
+              "database" => "source",
+              "table" => "shoes",
+              "columns" => {
+                "_key" => {
+                  "expression" => "name",
+                  "type" => "ShortText",
+                }
+              },
+            },
+          ]
+        },
+      }
+      @mapping = GroongaDelta::Mapping.new(data)
+    end
+
+    def generate_record(source_record)
+      @mapping["source", "shoes"].groonga_table.generate_record(source_record)
+    end
+
+    def test_invalid_encoding
+      name = "\u{3042}" # U+3042 HIRAGANA LETTER A
+      source_record = {"name" => name.encode("EUC-JP").b}
+      assert_raise(GroongaDelta::GenerationError) do
+        generate_record(source_record)
+      end
+    end
+
+    def test_ascii_8bit
+      name = "\u{3042}" # U+3042 HIRAGANA LETTER A
+      source_record = {"name" => name.dup.b}
+      assert_equal({_key: name},
+                   generate_record(source_record))
+    end
+
+    def test_euc_jp
+      name = "\u{3042}" # U+3042 HIRAGANA LETTER A
+      source_record = {"name" => name.encode("EUC-JP")}
+      assert_equal({_key: name},
+                   generate_record(source_record))
+    end
+  end
+
   sub_test_case("Time") do
     def setup
       data = {
