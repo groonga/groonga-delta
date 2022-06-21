@@ -315,12 +315,17 @@ load --table Items
   def test_per_day_only
     run_groonga do
       generate_config
-      assert_true(run_command)
       add_schema(<<-SCHEMA, per_day: true)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
       SCHEMA
+      assert_true(run_command)
+      assert_equal(<<-DUMP.chomp, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      DUMP
       add_upsert_data("Items", <<-LOAD, per_day: true)
 load --table Items
 [
@@ -347,12 +352,17 @@ load --table Items
   def test_no_per_day_only
     run_groonga do
       generate_config
-      assert_true(run_command)
       add_schema(<<-SCHEMA)
 table_create Items TABLE_HASH_KEY ShortText
 column_create Items name COLUMN_SCALAR ShortText
 column_create Items price COLUMN_SCALAR UInt32
       SCHEMA
+      assert_true(run_command)
+      assert_equal(<<-DUMP.chomp, dump_db)
+table_create Items TABLE_HASH_KEY ShortText
+column_create Items name COLUMN_SCALAR ShortText
+column_create Items price COLUMN_SCALAR UInt32
+      DUMP
       add_upsert_data("Items", <<-LOAD)
 load --table Items
 [
