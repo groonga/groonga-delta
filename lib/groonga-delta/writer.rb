@@ -74,7 +74,7 @@ module GroongaDelta
         delete = Groonga::Command::Delete.new
         delete[:table] = table
         keys.each do |key|
-          delete[:key] = key
+          delete[:key] = format_key(key)
           output.puts(delete.to_command_format)
         end
       end
@@ -130,6 +130,17 @@ module GroongaDelta
                   packed: packed,
                   open_output: open_output,
                   &block)
+    end
+
+    def format_key(key)
+      case key
+      when Integer, Float
+        key.to_s
+      when Time
+        key.strftime("%Y-%m-%d %H:%M:%S.%6N")
+      else
+        key
+      end
     end
   end
 end
