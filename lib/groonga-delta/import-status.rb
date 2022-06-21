@@ -45,6 +45,10 @@ module GroongaDelta
       def position
         self["position"]
       end
+
+      def last_table_map_position
+        self["last_table_map_position"]
+      end
     end
 
     class Local

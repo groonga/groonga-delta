@@ -53,7 +53,7 @@ module GroongaDelta
 
     private
     def import_mysqlbinlog
-      file, position = read_current_status
+      file, position, last_table_map_position = read_current_status
       FileUtils.mkdir_p(@binlog_dir)
       local_file = File.join(@binlog_dir, file)
       unless File.exist?(local_file.succ)
@@ -79,23 +79,26 @@ module GroongaDelta
       binlog.checksum = @config.checksum
       binlog.ignore_rotate = true
       binlog.each_event do |event|
-        next if event[:position] < position
+        next if event[:position] < last_table_map_position
         case event[:type]
         when :rotate_event
-          @status.update("file" => event[:event][:name],
-                         "position" => event[:event][:pos])
+          file = event[:event][:name]
+        when :table_map_event
+          last_table_map_position = event[:position]
         when :write_rows_event_v1,
              :write_rows_event_v2,
              :update_rows_event_v1,
              :update_rows_event_v2,
              :delete_rows_event_v1,
              :delete_rows_event_v2
+          next if event[:position] < position
           normalized_type = event[:type].to_s.gsub(/_v\d\z/, "").to_sym
           import_rows_event(normalized_type,
                             event[:event][:table][:db],
                             event[:event][:table][:table],
                             file,
-                            event[:header][:next_position]) do
+                            event[:header][:next_position],
+                            last_table_map_position) do
             case normalized_type
             when :write_rows_event,
                  :update_rows_event
@@ -114,7 +117,7 @@ module GroongaDelta
     end
 
     def import_mysql2_replication
-      file, position = read_current_status
+      file, position, last_table_map_position = read_current_status
       is_mysql_56_or_later = mysql(@config.select_user,
                                    @config.select_password) do |select_client|
         mysql_version(select_client) >= Gem::Version.new("5.6")
@@ -128,34 +131,43 @@ module GroongaDelta
                                                              checksum: "NONE")
         end
         replication_client.file_name = file
-        replication_client.start_position = position
+        current_event_position = last_table_map_position
+        replication_client.start_position = current_event_position
         replication_client.open do
           replication_client.each do |event|
-            @logger.debug do
-              event.inspect
-            end
-            case event
-            when Mysql2Replication::RotateEvent
-              file = event.file_name
-            when Mysql2Replication::RowsEvent
-              event_name = event.class.name.split("::").last
-              normalized_type =
-              event_name.scan(/[A-Z][a-z]+/).
-                collect(&:downcase).
-                join("_").
-                to_sym
-              import_rows_event(normalized_type,
-                                event.table_map.database,
-                                event.table_map.table,
-                                file,
-                                event.next_position) do
-                case normalized_type
-                when :update_rows_event
-                  event.updated_rows
-                else
-                  event.rows
+            begin
+              @logger.debug do
+                event.inspect
+              end
+              next if current_event_position < position
+              case event
+              when Mysql2Replication::RotateEvent
+                file = event.file_name
+              when Mysql2Replication::TableMapEvent
+                last_table_map_event = current_event_position
+              when Mysql2Replication::RowsEvent
+                event_name = event.class.name.split("::").last
+                normalized_type =
+                  event_name.scan(/[A-Z][a-z]+/).
+                    collect(&:downcase).
+                    join("_").
+                    to_sym
+                import_rows_event(normalized_type,
+                                  event.table_map.database,
+                                  event.table_map.table,
+                                  file,
+                                  event.next_position,
+                                  last_table_map_position) do
+                  case normalized_type
+                  when :update_rows_event
+                    event.updated_rows
+                  else
+                    event.rows
+                  end
                 end
               end
+            ensure
+              current_event_position = event.next_position
             end
           end
         end
@@ -167,6 +179,7 @@ module GroongaDelta
                           table_name,
                           file,
                           next_position,
+                          last_table_map_position,
                           &block)
       source_table = @mapping[database_name, table_name]
       return if source_table.nil?
@@ -192,7 +205,8 @@ module GroongaDelta
                               groonga_record_keys)
       end
       @status.update("file" => file,
-                     "position" => next_position)
+                     "position" => next_position,
+                     "last_table_map_position" => last_table_map_position)
     end
 
     def wait_process(command_line, pid, output_read, error_read)
@@ -267,7 +281,7 @@ module GroongaDelta
 
     def read_current_status
       if @status.file
-        [@status.file, @status.position]
+        [@status.file, @status.position, @status.last_table_map_position]
       else
         file = nil
         position = 0
@@ -291,8 +305,9 @@ module GroongaDelta
           end
         end
         @status.update("file" => file,
-                       "position" => position)
-        [file, position]
+                       "position" => position,
+                       "last_table_map_position" => position)
+        [file, position, position]
       end
     end
 
