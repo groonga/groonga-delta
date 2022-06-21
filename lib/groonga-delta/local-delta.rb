@@ -88,13 +88,13 @@ module GroongaDelta
                          &block)
       if min_timestamp
         min_timestamp_day = Time.utc(min_timestamp.year,
-                                     min_timesatmp.month,
-                                     min_timesatmp.day)
+                                     min_timestamp.month,
+                                     min_timestamp.day)
       end
       if max_timestamp
         max_timestamp_day = Time.utc(max_timestamp.year,
-                                     max_timesatmp.month,
-                                     max_timesatmp.day)
+                                     max_timestamp.month,
+                                     max_timestamp.day)
       end
       Dir.glob("#{dir}/*") do |path|
         base_name = File.basename(path)
