@@ -110,9 +110,10 @@ module GroongaDelta
         @writer.write_deletes(groonga_table.name,
                               groonga_record_keys)
       end
+      current_status.last_position = event.next_position
       new_status = {
         "last_file" => current_status.last_file,
-        "last_position" => event.next_position,
+        "last_position" => current_status.last_position,
         "last_table_map_file" => current_status.last_table_map_file,
         "last_table_map_position" => current_status.last_table_map_position,
       }
