@@ -64,4 +64,63 @@ class InportConfigTest < Test::Unit::TestCase
       end
     end
   end
+
+  sub_test_case("Vacuum") do
+    sub_test_case("#keep_span") do
+      def keep_span(input)
+        data = {
+          "keep_span" => input,
+        }
+        config = GroongaDelta::ImportConfig::Vacuum.new(data)
+        config.keep_span
+      end
+
+      data("integer", [1, 1])
+      data("float", [1.1, 1.1])
+      data("string - no unit", [1.0, "1"])
+      ["s", "sec", "second", "seconds"].each do |unit|
+        data("string - #{unit} - integer", [1.0, "1#{unit}"])
+        data("string - #{unit} - float", [1.1, "1.1#{unit}"])
+      end
+      ["m", "min", "minute", "minutes"].each do |unit|
+        data("string - #{unit} - integer", [1.0 * 60, "1#{unit}"])
+        data("string - #{unit} - float", [1.1 * 60, "1.1#{unit}"])
+      end
+      ["h", "hr", "hour", "hours"].each do |unit|
+        data("string - #{unit} - integer", [1.0 * 60 * 60, "1#{unit}"])
+        data("string - #{unit} - float", [1.1 * 60 * 60, "1.1#{unit}"])
+      end
+      ["d", "day", "days"].each do |unit|
+        data("string - #{unit} - integer", [1.0 * 60 * 60 * 24, "1#{unit}"])
+        data("string - #{unit} - float", [1.1 * 60 * 60 * 24, "1.1#{unit}"])
+      end
+      ["w", "week", "weeks"].each do |unit|
+        data("string - #{unit} - integer", [1.0 * 60 * 60 * 24 * 7, "1#{unit}"])
+        data("string - #{unit} - float", [1.1 * 60 * 60 * 24 * 7, "1.1#{unit}"])
+      end
+      ["month", "months"].each do |unit|
+        data("string - #{unit} - integer",
+             [1.0 * 60 * 60 * 24 * 30.44, "1#{unit}"])
+        data("string - #{unit} - float",
+             [1.1 * 60 * 60 * 24 * 30.44, "1.1#{unit}"])
+      end
+      ["y", "year", "years"].each do |unit|
+        data("string - #{unit} - integer",
+             [1.0 * 60 * 60 * 24 * 365.25, "1#{unit}"])
+        data("string - #{unit} - float",
+             [1.1 * 60 * 60 * 24 * 365.25, "1.1#{unit}"])
+      end
+      def test_input(data)
+        expected, actual = data
+        assert_equal(expected, keep_span(actual))
+      end
+
+      def test_string_unknown_unit
+        message = "invalid span value: \"1X\""
+        assert_raise(GroongaDelta::ConfigError.new(message)) do
+          keep_span("1X")
+        end
+      end
+    end
+  end
 end

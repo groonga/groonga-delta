@@ -24,10 +24,10 @@ class ImportCommandLocalVacuumerTest < Test::Unit::TestCase
   def setup
     Dir.mktmpdir do |dir|
       @dir = dir
-      @keep_seconds = 1
+      @keep_span = 1
       data = {
         "vacuum" => {
-          "keep_span" => @keep_seconds,
+          "keep_span" => @keep_span,
         },
       }
       File.open(File.join(@dir, "config.yaml"), "w") do |output|
@@ -40,12 +40,12 @@ class ImportCommandLocalVacuumerTest < Test::Unit::TestCase
     end
   end
 
-  def test_keep_seconds
+  def test_keep_span
     @writer.write_upserts("logs", {"_key": "log1"})
     paths = Dir.glob("#{@dir}/delta/**/*.grn")
     assert_true(run_command)
     assert_equal(paths, @reader.each.collect(&:path))
-    sleep(@keep_seconds)
+    sleep(@keep_span)
     assert_true(run_command)
     assert_equal([], @reader.each.collect(&:path))
   end
