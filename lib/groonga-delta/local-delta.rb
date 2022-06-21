@@ -101,7 +101,7 @@ module GroongaDelta
         if accept_directory and File.directory?(path)
           timestamp = parse_directory_timestamp(base_name)
           next if timestamp.nil?
-          next if min_timestamp_day and timestamp <= min_timestamp_day
+          next if min_timestamp_day and timestamp < min_timestamp_day
           next if max_timestamp_day and timestamp > max_timestamp_day
           each_target_path(path,
                            min_timestamp,
