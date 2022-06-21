@@ -131,6 +131,9 @@ module GroongaDelta
         replication_client.start_position = position
         replication_client.open do
           replication_client.each do |event|
+            @config.logger.debug do
+              event.inspect
+            end
             case event
             when Mysql2Replication::RotateEvent
               file = event.file_name
