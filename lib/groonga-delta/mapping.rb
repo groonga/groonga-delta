@@ -255,7 +255,16 @@ module GroongaDelta
       end
 
       def normalize_value(value)
-        case type
+        case @type
+        when nil, "ShortText", "Text", "LongText"
+          encoding = value.encoding
+          if encoding == Encoding::ASCII_8BIT
+            value.force_encoding(Encoding::UTF_8)
+            return value if value.valid_encoding?
+            value.encode(Encoding::UTF_8, encoding)
+          else
+            value.encode(Encoding::UTF_8)
+          end
         when "Time"
           time_max = @restriction.time_max
           time_min = @restriction.time_min
