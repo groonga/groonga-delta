@@ -15,6 +15,7 @@
 
 require "arrow"
 require "mysql2"
+require "mysql2-replication"
 
 require_relative "error"
 require_relative "local-writer"
@@ -32,92 +33,7 @@ module GroongaDelta
     end
 
     def import
-      case ENV["GROONGA_DELTA_IMPORT_MYSQL_SOURCE_BACKEND"]
-      when "mysqlbinlog"
-        require "mysql_binlog"
-        import_mysqlbinlog
-      when "mysql2-replication"
-        require "mysql2-replication"
-        import_mysql2_replication
-      else
-        begin
-          require "mysql2-replication"
-        rescue LoadError
-          require "mysql_binlog"
-          import_mysqlbinlog
-        else
-          import_mysql2_replication
-        end
-      end
-    end
-
-    private
-    def import_mysqlbinlog
-      file, position, last_table_map_position = read_current_status
-      FileUtils.mkdir_p(@binlog_dir)
-      local_file = File.join(@binlog_dir, file)
-      unless File.exist?(local_file.succ)
-        command_line = [@config.mysqlbinlog].flatten
-        command_line << "--host=#{@config.host}" if @config.host
-        command_line << "--port=#{@config.port}" if @config.port
-        command_line << "--socket=#{@config.socket}" if @config.socket
-        if @config.replication_slave_user
-          command_line << "--user=#{@config.replication_slave_user}"
-        end
-        if @config.replication_slave_password
-          command_line << "--password=#{@config.replication_slave_password}"
-        end
-        command_line << "--read-from-remote-server"
-        command_line << "--raw"
-        command_line << "--result-file=#{@binlog_dir}/"
-        command_line << file
-        spawn_process(*command_line) do |pid, output_read, error_read|
-        end
-      end
-      reader = MysqlBinlog::BinlogFileReader.new(local_file)
-      binlog = MysqlBinlog::Binlog.new(reader)
-      binlog.checksum = @config.checksum
-      binlog.ignore_rotate = true
-      binlog.each_event do |event|
-        next if event[:position] < last_table_map_position
-        case event[:type]
-        when :rotate_event
-          file = event[:event][:name]
-        when :table_map_event
-          last_table_map_position = event[:position]
-        when :write_rows_event_v1,
-             :write_rows_event_v2,
-             :update_rows_event_v1,
-             :update_rows_event_v2,
-             :delete_rows_event_v1,
-             :delete_rows_event_v2
-          next if event[:position] < position
-          normalized_type = event[:type].to_s.gsub(/_v\d\z/, "").to_sym
-          import_rows_event(normalized_type,
-                            event[:event][:table][:db],
-                            event[:event][:table][:table],
-                            file,
-                            event[:header][:next_position],
-                            last_table_map_position) do
-            case normalized_type
-            when :write_rows_event,
-                 :update_rows_event
-              event[:event][:row_image].collect do |row_image|
-                build_row(row_image[:after][:image])
-              end
-            when :delete_rows_event
-              event[:event][:row_image].collect do |row_image|
-                build_row(row_image[:before][:image])
-              end
-            end
-          end
-          position = event[:header][:next_position]
-        end
-      end
-    end
-
-    def import_mysql2_replication
-      file, position, last_table_map_position = read_current_status
+      current_status = read_current_status
       is_mysql_56_or_later = mysql(@config.select_user,
                                    @config.select_password) do |select_client|
         mysql_version(select_client) >= Gem::Version.new("5.6")
@@ -130,8 +46,9 @@ module GroongaDelta
           replication_client = Mysql2Replication::Client.new(client,
                                                              checksum: "NONE")
         end
-        replication_client.file_name = file
-        current_event_position = last_table_map_position
+        current_file = current_status.last_table_map_file
+        replication_client.file_name = current_file
+        current_event_position = current_status.last_table_map_position
         replication_client.start_position = current_event_position
         replication_client.open do
           replication_client.each do |event|
@@ -139,27 +56,20 @@ module GroongaDelta
               @logger.debug do
                 event.inspect
               end
-              next if current_event_position < position
               case event
               when Mysql2Replication::RotateEvent
-                file = event.file_name
+                current_file = event.file_name
+                current_status.last_file = current_file
+                current_status.last_position = event.position
               when Mysql2Replication::TableMapEvent
-                last_table_map_event = current_event_position
+                current_status.last_table_map_file = current_file
+                current_status.last_table_map_position = current_event_position
               when Mysql2Replication::RowsEvent
-                event_name = event.class.name.split("::").last
-                normalized_type =
-                  event_name.scan(/[A-Z][a-z]+/).
-                    collect(&:downcase).
-                    join("_").
-                    to_sym
-                import_rows_event(normalized_type,
-                                  event.table_map.database,
-                                  event.table_map.table,
-                                  file,
-                                  event.next_position,
-                                  last_table_map_position) do
-                  case normalized_type
-                  when :update_rows_event
+                next if current_file != current_status.last_file
+                next if current_event_position < current_status.last_position
+                import_rows_event(event, current_status) do
+                  case event
+                  when Mysql2Replication::UpdateRowsEvent
                     event.updated_rows
                   else
                     event.rows
@@ -174,39 +84,41 @@ module GroongaDelta
       end
     end
 
-    def import_rows_event(type,
-                          database_name,
-                          table_name,
-                          file,
-                          next_position,
-                          last_table_map_position,
-                          &block)
+    private
+    def import_rows_event(event, current_status)
+      database_name = event.table_map.database
+      table_name = event.table_map.table
+
       source_table = @mapping[database_name, table_name]
       return if source_table.nil?
 
       table = find_table(database_name, table_name)
       groonga_table = source_table.groonga_table
-      target_rows = block.call
+      target_rows = yield
       groonga_records = target_rows.collect do |row|
         record = build_record(table, row)
         groonga_table.generate_record(record)
       end
       return if groonga_records.empty?
 
-      case type
-      when :write_rows_event,
-           :update_rows_event
+      case event
+      when Mysql2Replication::WriteRowsEvent,
+           Mysql2Replication::UpdateRowsEvent
         @writer.write_upserts(groonga_table.name, groonga_records)
-      when :delete_rows_event
+      when Mysql2Replication::DeleteRowsEvent
         groonga_record_keys = groonga_records.collect do |record|
           record[:_key]
         end
         @writer.write_deletes(groonga_table.name,
                               groonga_record_keys)
       end
-      @status.update("file" => file,
-                     "position" => next_position,
-                     "last_table_map_position" => last_table_map_position)
+      new_status = {
+        "last_file" => current_status.last_file,
+        "last_position" => event.next_position,
+        "last_table_map_file" => current_status.last_table_map_file,
+        "last_table_map_position" => current_status.last_table_map_position,
+      }
+      @status.update(new_status)
     end
 
     def wait_process(command_line, pid, output_read, error_read)
@@ -280,17 +192,20 @@ module GroongaDelta
     end
 
     def read_current_status
-      if @status.file
-        [@status.file, @status.position, @status.last_table_map_position]
+      if @status.last_file
+        CurrentStatus.new(@status.last_file,
+                          @status.last_position,
+                          @status.last_table_map_file,
+                          @status.last_table_map_position)
       else
-        file = nil
-        position = 0
+        last_file = nil
+        last_position = 0
         mysql(@config.replication_client_user,
               @config.replication_client_password) do |replication_client|
           replication_client.query("FLUSH TABLES WITH READ LOCK")
           result = replication_client.query("SHOW MASTER STATUS").first
-          file = result["File"]
-          position = result["Position"]
+          last_file = result["File"]
+          last_position = result["Position"]
           mysql(@config.select_user,
                 @config.select_password) do |select_client|
             start_transaction = "START TRANSACTION " +
@@ -304,10 +219,14 @@ module GroongaDelta
             select_client.query("ROLLBACK")
           end
         end
-        @status.update("file" => file,
-                       "position" => position,
-                       "last_table_map_position" => position)
-        [file, position, position]
+        @status.update("last_file" => last_file,
+                       "last_position" => last_position,
+                       "last_table_map_file" => last_file,
+                       "last_table_map_position" => last_position)
+        CurrentStatus.new(last_file,
+                          last_position,
+                          last_file,
+                          last_position)
       end
     end
 
@@ -405,5 +324,10 @@ module GroongaDelta
       end
       record
     end
+
+    CurrentStatus = Struct.new(:last_file,
+                               :last_position,
+                               :last_table_map_file,
+                               :last_table_map_position)
   end
 end

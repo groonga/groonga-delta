@@ -29,26 +29,9 @@ class ImportCommandMySQLSourceTest < Test::Unit::TestCase
   end
 
   def generate_config(mysql_version, port, checksum)
-    case ENV["GROONGA_DELTA_IMPORT_MYSQL_SOURCE_BACKEND"]
-    when "mysqlbinlog"
-      host = UDPSocket.open do |socket|
-        socket.connect("128.0.0.1", 7)
-        Socket.unpack_sockaddr_in(socket.getsockname)[1]
-      end
-      mysqlbinlog =
-        docker_compose_command_line("run",
-                                    "--rm",
-                                    "--volume", "#{@dir}:#{@dir}",
-                                    "--user", "#{Process.uid}",
-                                    "mysql-#{mysql_version}-mysqlbinlog")
-    else
-      host = "127.0.0.1"
-      mysqlbinlog = nil
-    end
     data = {
       "mysql" => {
-        "mysqlbinlog" => mysqlbinlog,
-        "host" => host,
+        "host" => "127.0.0.1",
         "port" => port,
         "user" => "replicator",
         "password" => "replicator-password",

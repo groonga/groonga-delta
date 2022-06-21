@@ -38,12 +38,16 @@ module GroongaDelta
         @status.update("mysql" => new_data)
       end
 
-      def file
-        self["file"]
+      def last_file
+        self["last_file"] || self["file"] # For backward compatibility
       end
 
-      def position
-        self["position"]
+      def last_position
+        self["last_position"] || self["position"] # For backward compatibility
+      end
+
+      def last_table_map_file
+        self["last_table_map_file"] || self["file"]
       end
 
       def last_table_map_position

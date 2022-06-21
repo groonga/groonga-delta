@@ -16,9 +16,6 @@ jobs:
           - "2.7"
           - "3.0"
           - "3.1"
-        mysql-source-backend:
-          # - mysqlbinlog
-          - mysql2-replication
         runs-on:
           # - macos-latest
           - ubuntu-latest
@@ -78,7 +75,5 @@ jobs:
           bundler-cache: true
           cache-version: 1
       - name: Test
-        env:
-          GROONGA_DELTA_IMPORT_MYSQL_SOURCE_BACKEND: ${{ matrix.mysql-source-backend }}
         run: |
           bundle exec ruby test/run.rb

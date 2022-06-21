@@ -59,10 +59,6 @@ module GroongaDelta
         resolve_path(@data["binlog_dir"] || "binlog")
       end
 
-      def mysqlbinlog
-        @data["mysqlbinlog"] || "mysqlbinlog"
-      end
-
       def host
         @data["host"] || "localhost"
       end
