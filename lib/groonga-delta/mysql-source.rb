@@ -70,7 +70,11 @@ module GroongaDelta
                 import_rows_event(event, current_status)
               end
             ensure
-              current_event_position = event.next_position
+              # next_position may be 0. For example,
+              # Mysql2Replication::FormatDescriptionEvent#next_position
+              # returns 0.
+              next_position = event.next_position
+              current_event_position = next_position unless next_position.zero?
             end
           end
         end
