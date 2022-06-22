@@ -117,6 +117,7 @@ module GroongaDelta
         "last_table_map_file" => current_status.last_table_map_file,
         "last_table_map_position" => current_status.last_table_map_position,
       }
+      @logger.info("Update status: #{new_status.inspect}")
       @status.update(new_status)
     end
 
@@ -218,14 +219,19 @@ module GroongaDelta
             select_client.query("ROLLBACK")
           end
         end
-        @status.update("last_file" => last_file,
-                       "last_position" => last_position,
-                       "last_table_map_file" => last_file,
-                       "last_table_map_position" => last_position)
-        CurrentStatus.new(last_file,
-                          last_position,
-                          last_file,
-                          last_position)
+        current_status = CurrentStatus.new(last_file,
+                                           last_position,
+                                           last_file,
+                                           last_position)
+        new_status = {
+          "last_file" => current_status.last_file,
+          "last_position" => current_status.last_position,
+          "last_table_map_file" => current_status.last_file,
+          "last_table_map_position" => current_status.last_position,
+        }
+        @logger.info("Update status: #{new_status.inspect}")
+        @status.update(new_status)
+        current_status
       end
     end
 
