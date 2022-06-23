@@ -37,13 +37,8 @@ jobs:
           git config --global user.name "groonga"
           git config --global user.email "groonga@groonga.org"
           git clone \
-            --branch 3.2 \
+            --branch 3.3 \
             https://github.com/mariadb-corporation/mariadb-connector-c.git
-          git -C mariadb-connector-c fetch origin pull/187/head:fake-rotate-event
-          git -C mariadb-connector-c checkout fake-rotate-event
-          git -C mariadb-connector-c rebase 3.2
-          git -C mariadb-connector-c checkout -
-          git -C mariadb-connector-c merge fake-rotate-event
           cmake \
             -S mariadb-connector-c \
             -B mariadb-connector-c.build \
