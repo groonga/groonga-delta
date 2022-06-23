@@ -64,7 +64,7 @@ module GroongaDelta
     end
 
     def log_age
-      @data["log_age"] || 7
+      @data["log_age"] || 100
     end
 
     def log_max_size
