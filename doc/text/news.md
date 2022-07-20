@@ -1,5 +1,19 @@
 # NEWS
 
+## 1.0.3 - 2022-07-21
+
+### Improvements
+
+  * `import`: Dropped support for `mysqlbinlog`.
+
+  * Changed to use atomic write for `status.yaml`.
+
+  * Changed to keep 100 logs from 7 logs by default.
+
+### Fixes
+
+  * `import`: Fixed a bug that events to be processed can't be detected.
+
 ## 1.0.2 - 2022-06-21
 
 ### Improvements
