@@ -49,7 +49,9 @@ module GroongaDelta
         current_file = current_status.last_table_map_file
         replication_client.file_name = current_file
         current_event_position = current_status.last_table_map_position
-        replication_client.start_position = current_event_position
+        if current_event_position
+          replication_client.start_position = current_event_position
+        end
         replication_client.open do
           replication_client.each do |event|
             begin
